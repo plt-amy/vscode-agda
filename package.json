@@ -19,12 +19,26 @@
   "activationEvents": [
     "onLanguage:plaintext"
   ],
-  "main": "./client/out/extension",
+  "main": "./out/extension.js",
   "contributes": {
+    "languages": [
+      {
+        "id": "agda",
+        "aliases": ["Agda", "agda"],
+        "extensions": [".agda", ".lagda.md"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
     "configuration": {
       "type": "object",
       "title": "Agda",
       "properties": {
+        "agda.agdaExecutable": {
+          "scope": "window",
+          "type": "string",
+          "default": "agda",
+          "description": "The name or path to the Agda executable"
+        },
         "agda.lspHighlightingLevel": {
           "scope": "resource",
           "type": "string",
@@ -42,9 +56,20 @@
       {
         "language": "agda",
         "scopes": {
-          "Symbol":    ["source.agda"],
-          "Primitive": ["entity.name.type.agda"]
+          "Symbol": [
+            "source.agda"
+          ],
+          "Primitive": [
+            "entity.name.type.agda"
+          ]
         }
+      }
+    ],
+    "grammars": [
+      {
+        "language": "agda",
+        "scopeName": "source.agda",
+        "path": "./syntaxes/agda.tmLanguage.json"
       }
     ]
   },
@@ -52,17 +77,18 @@
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -b",
     "watch": "tsc -b -w",
-    "lint": "eslint ./client/src ./server/src --ext .ts,.tsx",
-    "postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
-    "test": "sh ./scripts/e2e.sh"
+    "lint": "eslint ./src --ext .ts,.tsx"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
   },
   "devDependencies": {
-    "@types/mocha": "^10.0.6",
-    "@types/node": "^18.14.6",
+    "@types/node": "^20.12.7",
+    "@types/vscode": "^1.75.1",
     "@typescript-eslint/eslint-plugin": "^7.1.0",
     "@typescript-eslint/parser": "^7.1.0",
+    "@vscode/test-electron": "^2.3.9",
     "eslint": "^8.57.0",
-    "mocha": "^10.3.0",
     "typescript": "^5.3.3"
   }
 }

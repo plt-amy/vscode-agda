@@ -1,0 +1,61 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Agda",
+  "scopeName": "source.agda",
+  "patterns": [
+    { "include": "#pragma" },
+    { "include": "#code"}
+  ],
+  "repository": {
+    "pragma": {
+      "name": "meta.preprocessor.agda",
+      "begin": "{-#",
+      "beginCaptures": { "0": { "name": "punctuation.definition.comment.begin.agda" } },
+      "end": "#-}",
+      "endCaptures": { "0": { "name": "punctuation.definition.comment.end.agda" } },
+      "patterns": [
+        { "include": "#pragma" },
+        {
+          "name": "keyword.other.agda",
+          "match": "BUILTIN|CATCHALL|COMPILE|FOREIGN|DISPLAY|ETA|IMPOSSIBLE|INJECTIVE|INJECTIVE_FOR_INFERENCE|INLINE|INCOHERENT|NOINLINE|NOT_PROJECTION_LIKE|LINE|MEASURE|NO_POSITIVITY_CHECK|NO_TERMINATION_CHECK|NO_UNIVERSE_CHECK|NON_COVERING|NON_TERMINATING|OPTIONS|POLARITY|OVERLAPPABLE|OVERLAPPING|OVERLAPS|REWRITE|STATIC|TERMINATING|WARNING_ON_USAGE|WARNING_ON_IMPORT"
+        }
+      ]
+    },
+    "code": {
+      "patterns": [
+        { "include": "#comment" },
+        { "include": "#block_comment" },
+        {
+          "name": "keyword.agda",
+          "match": "abstract|codata|coinductive|constructor|data|do|eta-equality|field|forall|import|in|inductive|infix|infixl|infixr|instance|interleaved|let|macro|module|mutual|no-eta-equality|open|overlap|pattern|postulate|primitive|private|quote|quoteTerm|record|rewrite|syntax|tactic|unquote|unquoteDecl|unquoteDef|variable|where|with|opaque|unfolding|using|hiding|renaming|public"
+        },
+        {
+          "match": "\\.\\.\\.|\\.\\.|\\.|;|:|=|_|\\?|\\||\\(\\||\\|\\)|\\(\\|\\)|\\(|\\)|\\->|\\\\|@|\\{\\{|\\{|\\}",
+          "name": "keyword.agda"
+        },
+        {
+          "name": "string.quoted.double.agda",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [{
+            "name": "constant.character.escape.agda", "match": "\\\\."
+          }]
+        },
+        {
+          "name": "identifier.agda",
+          "match": "[A-Za-z0-9-!#$%&*+\/<=>^|~?`\\[\\],:._'[[:^ascii:]&&[:graph:]]]+"
+        }
+      ]
+    },
+    "comment": {
+      "name": "comment.line.agda",
+      "match": "--.*$\n?"
+    },
+    "block_comment": {
+      "name": "comment.block.agda",
+      "begin": "{-",
+      "end": "-}",
+      "patterns": [{ "include": "#block_comment" }]
+    }
+  }
+}
