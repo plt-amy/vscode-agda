@@ -17,7 +17,7 @@
         { "include": "#pragma" },
         {
           "name": "keyword.other.agda",
-          "match": "BUILTIN|CATCHALL|COMPILE|FOREIGN|DISPLAY|ETA|IMPOSSIBLE|INJECTIVE|INJECTIVE_FOR_INFERENCE|INLINE|INCOHERENT|NOINLINE|NOT_PROJECTION_LIKE|LINE|MEASURE|NO_POSITIVITY_CHECK|NO_TERMINATION_CHECK|NO_UNIVERSE_CHECK|NON_COVERING|NON_TERMINATING|OPTIONS|POLARITY|OVERLAPPABLE|OVERLAPPING|OVERLAPS|REWRITE|STATIC|TERMINATING|WARNING_ON_USAGE|WARNING_ON_IMPORT"
+          "match": "\\b(BUILTIN|CATCHALL|COMPILE|FOREIGN|DISPLAY|ETA|IMPOSSIBLE|INJECTIVE|INJECTIVE_FOR_INFERENCE|INLINE|INCOHERENT|NOINLINE|NOT_PROJECTION_LIKE|LINE|MEASURE|NO_POSITIVITY_CHECK|NO_TERMINATION_CHECK|NO_UNIVERSE_CHECK|NON_COVERING|NON_TERMINATING|OPTIONS|POLARITY|OVERLAPPABLE|OVERLAPPING|OVERLAPS|REWRITE|STATIC|TERMINATING|WARNING_ON_USAGE|WARNING_ON_IMPORT)\\b"
         }
       ]
     },
@@ -27,10 +27,10 @@
         { "include": "#block_comment" },
         {
           "name": "keyword.agda",
-          "match": "abstract|codata|coinductive|constructor|data|do|eta-equality|field|forall|import|in|inductive|infix|infixl|infixr|instance|interleaved|let|macro|module|mutual|no-eta-equality|open|overlap|pattern|postulate|primitive|private|quote|quoteTerm|record|rewrite|syntax|tactic|unquote|unquoteDecl|unquoteDef|variable|where|with|opaque|unfolding|using|hiding|renaming|public"
+          "match": "\\b(abstract|codata|coinductive|constructor|data|do|eta-equality|field|forall|import|in|inductive|infix|infixl|infixr|instance|interleaved|let|macro|module|mutual|no-eta-equality|open|overlap|pattern|postulate|primitive|private|quote|quoteTerm|record|rewrite|syntax|tactic|unquote|unquoteDecl|unquoteDef|variable|where|with|opaque|unfolding|using|hiding|renaming|public)\\b"
         },
         {
-          "match": "\\.\\.\\.|\\.\\.|\\.|;|:|=|_|\\?|\\||\\(\\||\\|\\)|\\(\\|\\)|\\(|\\)|\\->|\\\\|@|\\{\\{|\\{|\\}",
+          "match": "\\b(\\.\\.\\.|\\.\\.|\\.|;|:|=|_|\\?|\\||\\(\\||\\|\\)|\\(\\|\\)|\\(|\\)|\\->|\\\\|@|\\{\\{|\\{|\\}|→|∀|⦃|⦄)\\b",
           "name": "keyword.agda"
         },
         {

@@ -24,8 +24,14 @@
     "languages": [
       {
         "id": "agda",
-        "aliases": ["Agda", "agda"],
-        "extensions": [".agda", ".lagda.md"],
+        "aliases": [
+          "Agda",
+          "agda"
+        ],
+        "extensions": [
+          ".agda",
+          ".lagda.md"
+        ],
         "configuration": "./language-configuration.json"
       }
     ],
@@ -56,11 +62,29 @@
       {
         "language": "agda",
         "scopes": {
-          "Symbol": [
-            "source.agda"
+          "symbol": [
+            "source.agda.symbol"
           ],
-          "Primitive": [
-            "entity.name.type.agda"
+          "pragma": [
+            "source.agda.pragma"
+          ],
+          "markup": [
+            "source.agda.markup"
+          ],
+          "background": [
+            "source.agda.background"
+          ],
+          "primitiveType": [
+            "support.type.primitive"
+          ],
+          "primitive": [
+            "entity.name.primitive"
+          ],
+          "postulate": [
+            "entity.name.postulate"
+          ],
+          "coinductiveCons": [
+            "constant.other.symbol"
           ]
         }
       }

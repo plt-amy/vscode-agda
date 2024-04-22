@@ -6,96 +6,49 @@
 import * as path from 'path';
 import { workspace, ExtensionContext, languages, SemanticTokensLegend,
 Position, DocumentSemanticTokensProvider, CancellationToken,
-ProviderResult, SemanticTokens, TextDocument, Event, SemanticTokensBuilder, Uri, Range } from 'vscode';
+ProviderResult, SemanticTokens, TextDocument, Event, SemanticTokensBuilder, Uri, Range, window, TextEditor, TextEditorDecorationType, DecorationRenderOptions, EventEmitter } from 'vscode';
+import { SemanticTokensFeature } from 'vscode-languageclient/lib/common/semanticTokens';
 
 import {
   LanguageClient,
   LanguageClientOptions,
   Executable,
   TransportKind,
-  ProtocolNotificationType0
+  ProtocolNotificationType0,
+  SemanticTokensRefreshRequest,
+  SemanticTokensRequest,
+  Trace
 } from 'vscode-languageclient/node';
 
 let client: LanguageClient;
 
-const tokenTypes: string[] =
-  [ 'namespace', 'class', 'enum', 'interface', 'struct',
-  'typeParameter', 'type', 'parameter', 'variable', 'property',
-  'enumMember', 'decorator', 'event', 'function', 'method', 'macro',
-  'label', 'comment', 'string', 'keyword', 'number', 'regexp',
-  'operator', 'Symbol', 'Pragma', 'InteractionPoint', 'Primitive', 'Postulate'
-  ];
-
-const tokenModifiers =
-  [ 'declaration', 'definition', 'readonly',
-  'static', 'deprecated', 'abstract', 'async', 'modification',
-  'documentation', 'defaultLibrary' ];
-const legend = new SemanticTokensLegend(tokenTypes, tokenModifiers);
-
-type Token = {
-  tokenStart: number,
-  tokenEnd: number,
-  tokenType: string
-}
-
-type PendingTokens = {
-  document?: TextDocument,
-  tokens?:   Token[],
-  resolve?:  (tokens: SemanticTokens) => void,
+interface TokenData {
+  readonly tokenStart: number;
+  readonly tokenEnd:   number;
+  readonly tokenType:  string;
 }
 
 class AgdaTokenProvider implements DocumentSemanticTokensProvider {
-  private documents: Map<string, PendingTokens>;
+  private readonly emitter: EventEmitter<void> = new EventEmitter();
+  readonly onDidChangeSemanticTokens: Event<void> = this.emitter.event;
 
-  constructor(client: LanguageClient) {
-    this.documents = new Map();
-
-    console.log("Starting Agda client");
-    client.onNotification('agda/pushTokens', (data) => {
-      const has = this.documents.get(data.uri);
-      if (!has) {
-        this.documents.set(data.uri, {
-          tokens: data.data
-        });
-      } else {
-        has.tokens.push(...data.data);
-      }
-    });
-
-    client.onNotification('agda/finishTokens', ({ uri }: { uri: string }) => {
-      let has: PendingTokens | undefined;
-
-      if ((has = this.documents.get(uri)) && has.document && has.resolve) {
-        this.documents.delete(uri);
-        console.log(`Finishing ${has.tokens.length} tokens for file ${uri}`);
-        const builder = new SemanticTokensBuilder(legend);
-        for (const tok of has.tokens) {
-          const ps = has.document.positionAt(tok.tokenStart - 1),
-            pe = has.document.positionAt(tok.tokenEnd - 1);
-
-          if (pe.line != ps.line) continue;
-
-          try {
-            builder.push(new Range(ps, pe), tok.tokenType, []);
-          } catch(e) {
-            console.log(tok, e);
-          }
-        }
-        has.resolve(builder.build());
-      }
+  constructor (private readonly client: LanguageClient) {
+    client.onRequest(SemanticTokensRefreshRequest.type, async () => {
+      this.emitter.fire();
     });
   }
 
-  provideDocumentSemanticTokens(document: TextDocument, token: CancellationToken): ProviderResult<SemanticTokens> {
-    return new Promise((resolve) => {
-      const key = document.uri.toString();
-      const has = this.documents.get(key);
-      if (!has) {
-        this.documents.set(key, { document, resolve, tokens: [] });
-      } else {
-        has.document = document; has.resolve = resolve;
-      }
+  async provideDocumentSemanticTokens(document: TextDocument, token: CancellationToken): Promise<SemanticTokens> {
+    const tokens = await client.sendRequest(SemanticTokensRequest.type, {
+      textDocument: client.code2ProtocolConverter.asTextDocumentIdentifier(document)
     });
+    console.log("Got tokens:", tokens);
+    const toks = await client.protocol2CodeConverter.asSemanticTokens(tokens);
+    return toks;
+  }
+
+  async provideDocumentSemanticTokensEdits(document: TextDocument, previous: string, token: CancellationToken): Promise<SemanticTokens> {
+    return this.provideDocumentSemanticTokens(document, token);
   }
 }
 
@@ -131,7 +84,13 @@ export function activate(context: ExtensionContext) {
   // Start the client. This will also launch the server
   client.start();
 
-  context.subscriptions.push(languages.registerDocumentSemanticTokensProvider(agda, new AgdaTokenProvider(client), legend));
+  SemanticTokensFeature.prototype.register = function() {};
+  client.onNotification('agda/highlightingInit', ({ legend }) => {
+    const decoded = client.protocol2CodeConverter.asSemanticTokensLegend(legend);
+    context.subscriptions.push(
+      languages.registerDocumentSemanticTokensProvider(agda, new AgdaTokenProvider(client), decoded)
+    );
+  });
 }
 
 export function deactivate(): Thenable<void> | undefined {
