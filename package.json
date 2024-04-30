@@ -35,6 +35,25 @@
         "configuration": "./language-configuration.json"
       }
     ],
+    "viewsContainers": {
+      "panel": [
+        {
+          "id": "agda-infoview",
+          "icon": "asdf.svg",
+          "title": "Agda"
+        }
+      ]
+    },
+    "views": {
+      "agda-infoview": [
+        {
+          "type": "webview",
+          "id": "agda.infoView",
+          "name": "Status",
+          "visibility": "visible"
+        }
+      ]
+    },
     "configuration": {
       "type": "object",
       "title": "Agda",

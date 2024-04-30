@@ -6,7 +6,7 @@
 import * as path from 'path';
 import { workspace, ExtensionContext, languages, SemanticTokensLegend,
 Position, DocumentSemanticTokensProvider, CancellationToken,
-ProviderResult, SemanticTokens, TextDocument, Event, SemanticTokensBuilder, Uri, Range, window, TextEditor, TextEditorDecorationType, DecorationRenderOptions, EventEmitter } from 'vscode';
+ProviderResult, SemanticTokens, TextDocument, Event, SemanticTokensBuilder, Uri, Range, window, TextEditor, TextEditorDecorationType, DecorationRenderOptions, EventEmitter, ViewColumn, WebviewViewProvider, WebviewView, WebviewViewResolveContext, StatusBarAlignment, ThemeColor } from 'vscode';
 import { SemanticTokensFeature } from 'vscode-languageclient/lib/common/semanticTokens';
 
 import {
@@ -17,7 +17,14 @@ import {
   ProtocolNotificationType0,
   SemanticTokensRefreshRequest,
   SemanticTokensRequest,
-  Trace
+  Trace,
+  Location,
+  StaticFeature,
+  ClientCapabilities,
+  DocumentSelector,
+  FeatureState,
+  InitializeParams,
+  ServerCapabilities
 } from 'vscode-languageclient/node';
 
 let client: LanguageClient;
@@ -39,9 +46,11 @@ class AgdaTokenProvider implements DocumentSemanticTokensProvider {
   }
 
   async provideDocumentSemanticTokens(document: TextDocument, token: CancellationToken): Promise<SemanticTokens> {
+    console.log(`Asking for tokens for ${document.uri.path}`);
     const tokens = await client.sendRequest(SemanticTokensRequest.type, {
       textDocument: client.code2ProtocolConverter.asTextDocumentIdentifier(document)
     });
+
     console.log("Got tokens:", tokens);
     const toks = await client.protocol2CodeConverter.asSemanticTokens(tokens);
     return toks;
@@ -52,13 +61,17 @@ class AgdaTokenProvider implements DocumentSemanticTokensProvider {
   }
 }
 
+const decor = window.createTextEditorDecorationType({
+  color: 'red'
+});
+
 export function activate(context: ExtensionContext) {
   // If the extension is launched in debug mode then the debug server options are used
   // Otherwise the run options are used
   const command = workspace.getConfiguration("agda").get("agdaExecutable", "agda");
   const serverOptions: Executable = {
     command,
-    args: ['--lsp'],
+    args: ['--lsp', '-vlsp:30'],
     transport: TransportKind.stdio,
   };
 
@@ -91,6 +104,83 @@ export function activate(context: ExtensionContext) {
       languages.registerDocumentSemanticTokensProvider(agda, new AgdaTokenProvider(client), decoded)
     );
   });
+
+  const infoview = new AgdaInfoviewProvider();
+  const pro = window.registerWebviewViewProvider(AgdaInfoviewProvider.viewType, infoview);
+  console.log(pro);
+
+  window.onDidChangeTextEditorSelection(async (e) => {
+    if (e.textEditor.document.uri.scheme !== 'file') return;
+
+    if (e.selections.length === 1) {
+      const loc: Location = {
+        uri: e.textEditor.document.uri.toString(),
+        range: {
+          start: e.selections[0].start,
+          end: e.selections[0].end
+        }
+      }
+      const ip = await client.sendRequest('agda/interactionPoint', loc);
+      infoview.setGoal(ip);
+      console.log(ip);
+    }
+  });
+}
+
+class AgdaInfoviewProvider implements WebviewViewProvider {
+  public static readonly viewType = 'agda.infoView';
+  private view: WebviewView;
+
+  resolveWebviewView(webviewView: WebviewView, context: WebviewViewResolveContext<unknown>, token: CancellationToken): void | Thenable<void> {
+    console.log(webviewView, context, token);
+    this.view = webviewView;
+    webviewView.show();
+
+    webviewView.webview.options = {
+      // Allow scripts in the webview
+      enableScripts: true,
+    };
+
+    webviewView.webview.html = `
+    <html>
+      <body>
+        <div style="display: flex;">
+          <span style="font-size:20pt; font-family: var(--vscode-editor-font-family)" id="goal"></span>
+        </div>
+      </body>
+
+      <script>
+        function createGoal(e) {
+          if (typeof e === 'object' && e.tag && e.children) {
+            const span = document.createElement('span');
+            span.style = "color: var(--vscode-agda-" + e.tag + ");"
+            span.replaceChildren(...e.children.map(createGoal))
+            return span;
+          }
+          return document.createTextNode(e);
+        }
+
+        window.addEventListener('message', (e) => {
+          const goal = document.getElementById("goal");
+          console.log('message received', e);
+          if (!e.data) { goal.replaceChildren(); return; }
+          try {
+            goal.replaceChildren(...e.data.data.map(createGoal));
+          } catch(e) {
+            console.log(e);
+          }
+        })
+      </script>
+    </html>
+    `;
+    webviewView.webview.onDidReceiveMessage(console.log);
+    // webviewView.webview.postMessage()
+  }
+
+  setGoal(ip: any) {
+    if (!this.view) return;
+    this.view.webview.postMessage(ip);
+  }
 }
 
 export function deactivate(): Thenable<void> | undefined {
