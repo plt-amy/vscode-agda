@@ -19,7 +19,7 @@
   "activationEvents": [
     "onLanguage:plaintext"
   ],
-  "main": "./out/extension.js",
+  "main": "./out/src/extension.js",
   "contributes": {
     "languages": [
       {
@@ -118,19 +118,25 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "compile": "tsc -b",
-    "watch": "tsc -b -w",
+    "compile": "node esbuild.mjs --production",
+    "watch": "node esbuild.mjs --watch",
     "lint": "eslint ./src --ext .ts,.tsx"
   },
   "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tslib": "^2.6.2",
     "vscode-languageclient": "^9.0.1"
   },
   "devDependencies": {
     "@types/node": "^20.12.7",
+    "@types/react": "^18.3.1",
+    "@types/react-dom": "^18.3.0",
     "@types/vscode": "^1.75.1",
     "@typescript-eslint/eslint-plugin": "^7.1.0",
     "@typescript-eslint/parser": "^7.1.0",
     "@vscode/test-electron": "^2.3.9",
+    "esbuild": "^0.20.2",
     "eslint": "^8.57.0",
     "typescript": "^5.3.3"
   }

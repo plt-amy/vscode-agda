@@ -8,10 +8,7 @@
 			"presentation": {
 				"panel": "dedicated",
 				"reveal": "never"
-			},
-			"problemMatcher": [
-				"$tsc"
-			]
+			}
 		},
 		{
 			"type": "npm",
@@ -25,9 +22,29 @@
 				"panel": "dedicated",
 				"reveal": "never"
 			},
-			"problemMatcher": [
-				"$tsc-watch"
-			]
+      "problemMatcher": {
+        "owner": "esbuild",
+        "fileLocation": "relative",
+        "pattern": [
+          // TODO: Something sensible here.
+          {
+            "regexp": "^[✘▲] \\[([A-Z]+)\\] (.+)",
+            "severity": 1,
+            "message": 2
+          },
+          {
+            "regexp": "^(?:\\t| {4})(?!\\s)([^:]+)(?::([0-9]+))?(?::([0-9]+))?:$",
+            "file": 1,
+            "line": 2,
+            "column": 3
+          }
+        ],
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^\\[watch\\] build started$",
+          "endsPattern": "^\\[watch\\] build finished, watching for changes\\.\\.\\.$"
+        }
+      }
 		}
 	]
 }

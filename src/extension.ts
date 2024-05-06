@@ -3,10 +3,11 @@
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
 
-import * as path from 'path';
-import { workspace, ExtensionContext, languages, SemanticTokensLegend,
-Position, DocumentSemanticTokensProvider, CancellationToken,
-ProviderResult, SemanticTokens, TextDocument, Event, SemanticTokensBuilder, Uri, Range, window, TextEditor, TextEditorDecorationType, DecorationRenderOptions, EventEmitter, ViewColumn, WebviewViewProvider, WebviewView, WebviewViewResolveContext, StatusBarAlignment, ThemeColor } from 'vscode';
+import {
+  workspace, ExtensionContext, languages,
+  DocumentSemanticTokensProvider, CancellationToken,
+  SemanticTokens, TextDocument, Event, Uri, window, EventEmitter, WebviewViewProvider, WebviewView, WebviewViewResolveContext
+} from 'vscode';
 import { SemanticTokensFeature } from 'vscode-languageclient/lib/common/semanticTokens';
 
 import {
@@ -14,32 +15,24 @@ import {
   LanguageClientOptions,
   Executable,
   TransportKind,
-  ProtocolNotificationType0,
   SemanticTokensRefreshRequest,
   SemanticTokensRequest,
-  Trace,
-  Location,
-  StaticFeature,
-  ClientCapabilities,
-  DocumentSelector,
-  FeatureState,
-  InitializeParams,
-  ServerCapabilities
+  Location
 } from 'vscode-languageclient/node';
 
 let client: LanguageClient;
 
 interface TokenData {
   readonly tokenStart: number;
-  readonly tokenEnd:   number;
-  readonly tokenType:  string;
+  readonly tokenEnd: number;
+  readonly tokenType: string;
 }
 
 class AgdaTokenProvider implements DocumentSemanticTokensProvider {
   private readonly emitter: EventEmitter<void> = new EventEmitter();
   readonly onDidChangeSemanticTokens: Event<void> = this.emitter.event;
 
-  constructor (private readonly client: LanguageClient) {
+  constructor(private readonly client: LanguageClient) {
     client.onRequest(SemanticTokensRefreshRequest.type, async () => {
       this.emitter.fire();
     });
@@ -53,7 +46,7 @@ class AgdaTokenProvider implements DocumentSemanticTokensProvider {
 
     console.log("Got tokens:", tokens);
     const toks = await client.protocol2CodeConverter.asSemanticTokens(tokens);
-    return toks;
+    return toks!;
   }
 
   async provideDocumentSemanticTokensEdits(document: TextDocument, previous: string, token: CancellationToken): Promise<SemanticTokens> {
@@ -97,7 +90,7 @@ export function activate(context: ExtensionContext) {
   // Start the client. This will also launch the server
   client.start();
 
-  SemanticTokensFeature.prototype.register = function() {};
+  SemanticTokensFeature.prototype.register = function () { };
   client.onNotification('agda/highlightingInit', ({ legend }) => {
     const decoded = client.protocol2CodeConverter.asSemanticTokensLegend(legend);
     context.subscriptions.push(
@@ -105,7 +98,7 @@ export function activate(context: ExtensionContext) {
     );
   });
 
-  const infoview = new AgdaInfoviewProvider();
+  const infoview = new AgdaInfoviewProvider(context.extensionUri);
   const pro = window.registerWebviewViewProvider(AgdaInfoviewProvider.viewType, infoview);
   console.log(pro);
 
@@ -129,7 +122,12 @@ export function activate(context: ExtensionContext) {
 
 class AgdaInfoviewProvider implements WebviewViewProvider {
   public static readonly viewType = 'agda.infoView';
-  private view: WebviewView;
+  private readonly extensionUri: Uri;
+  private view?: WebviewView;
+
+  constructor(extensionUri: Uri) {
+    this.extensionUri = extensionUri;
+  }
 
   resolveWebviewView(webviewView: WebviewView, context: WebviewViewResolveContext<unknown>, token: CancellationToken): void | Thenable<void> {
     console.log(webviewView, context, token);
@@ -144,6 +142,7 @@ class AgdaInfoviewProvider implements WebviewViewProvider {
     webviewView.webview.html = `
     <html>
       <body>
+        <div id="container"></div>
         <div style="display: flex;">
           <span style="font-size:20pt; font-family: var(--vscode-editor-font-family)" id="goal"></span>
         </div>
@@ -171,6 +170,8 @@ class AgdaInfoviewProvider implements WebviewViewProvider {
           }
         })
       </script>
+
+      <script src="${webviewView.webview.asWebviewUri(Uri.joinPath(this.extensionUri, "out", "infoview", "index.js"))}"></script>
     </html>
     `;
     webviewView.webview.onDidReceiveMessage(console.log);
