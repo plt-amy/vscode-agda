@@ -18,6 +18,6 @@
     "forceConsistentCasingInFileNames": true,
   },
 
-  "include": ["src"],
+  "include": ["src", "api/rpc.ts"],
   "exclude": ["node_modules"]
 }

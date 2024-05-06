@@ -74,6 +74,19 @@
           ],
           "default": "NonInteractive",
           "description": "Specifies the highlighting level that should be used over this connection. NonInteractive highlighting is the default (the source file is highlighted once at the end of scope checking, and once at the end of type checking). Interactive highlighting pushes highlighting changes to the client as they are produced by the type checker."
+        },
+        "agda.goal.typeNormalisation": {
+          "scope": "resource",
+          "type": "string",
+          "enum": [
+            "AsIs",
+            "Instantiated",
+            "HeadNormal",
+            "Simplified",
+            "Normalised"
+          ],
+          "default": "AsIs",
+          "description": "Normalisation level to use, by default, for the goal type."
         }
       }
     },
@@ -123,8 +136,11 @@
     "lint": "eslint ./src --ext .ts,.tsx"
   },
   "dependencies": {
+    "@types/react-router-dom": "^5.3.3",
+    "@types/vscode-webview": "^1.57.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-router-dom": "^6.23.0",
     "tslib": "^2.6.2",
     "vscode-languageclient": "^9.0.1"
   },
