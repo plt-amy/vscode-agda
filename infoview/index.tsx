@@ -139,12 +139,7 @@ const Goal = () => {
   const [searchParams] = useSearchParams();
   const uri = searchParams.get("uri")!;
 
-  const goal = useQuery(rpc.Query.GoalType, {
-    uri: uri,
-    goal: id
-  })
-
-  const context = useQuery(rpc.Query.GoalContext, {
+  const goal = useQuery(rpc.Query.GoalInfo, {
     uri: uri,
     goal: id
   })
@@ -153,11 +148,11 @@ const Goal = () => {
     <span>
       <span>Goal </span>
       <span className="type">
-        ?{id} : {goal && <Doc it={goal} />}
+        ?{id} : {goal && <Doc it={goal.goalGoal.goalType} />}
       </span>
     </span>
     <ul>
-      {...(context ?? []).map((e: rpc.Entry) => <li key={e.localName.toString()}>{renderDoc(e.localName)} : <Doc it={e.localType} /></li>)}
+      {...(goal?.goalContext ?? []).map((e: rpc.Entry) => <li key={e.localName.toString()}>{renderDoc(e.localName)} : <Doc it={e.localType} /></li>)}
     </ul>
   </div>;
 }

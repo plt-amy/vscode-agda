@@ -18,6 +18,11 @@ export type Entry = {
 
 export type Context = Entry[]
 
+export type GoalInfo = {
+  goalGoal: Goal,
+  goalContext: Context,
+};
+
 export type Rewrite = "AsIs" | "Instantiated" | "HeadNormal" | "Simplified" | "Normalised";
 
 export class Query<P extends {}, R> {
@@ -26,8 +31,7 @@ export class Query<P extends {}, R> {
 
   public static GoalAt: Query<{ position: lsp.Position }, number | null> = new Query('GoalAt');
   public static AllGoals: Query<{}, Goal[]> = new Query('AllGoals');
-  public static GoalType: Query<{ goal: number }, Doc> = new Query('GoalType');
-  public static GoalContext: Query<{ goal: number }, Entry[]> = new Query('GoalContext');
+  public static GoalInfo: Query<{ goal: number }, GoalInfo> = new Query('GoalInfo');
 }
 
 
