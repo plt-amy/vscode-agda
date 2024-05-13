@@ -18,10 +18,9 @@ import {
   SemanticTokensRefreshRequest,
   SemanticTokensRequest,
 } from 'vscode-languageclient/node';
+import * as lsp from 'vscode-languageclient/node';
 
 import * as rpc from '../api/rpc';
-
-let client: LanguageClient;
 
 class LanguageClientConnection implements rpc.Connection {
   constructor(private readonly client: LanguageClient) { }
@@ -32,6 +31,9 @@ class LanguageClientConnection implements rpc.Connection {
     }));
   }
 }
+
+let client: LanguageClient;
+let agda: rpc.Connection;
 
 class AgdaTokenProvider implements DocumentSemanticTokensProvider {
   private readonly emitter: EventEmitter<void> = new EventEmitter();
@@ -62,10 +64,13 @@ class AgdaTokenProvider implements DocumentSemanticTokensProvider {
 export function activate(context: ExtensionContext) {
   // If the extension is launched in debug mode then the debug server options are used
   // Otherwise the run options are used
-  const command = workspace.getConfiguration("agda").get("agdaExecutable", "agda");
+  const command = workspace.getConfiguration("agda").get("executable.path", "agda");
+  const opts = workspace.getConfiguration("agda").get<string[]>("executable.options", []);
+
+  let args: string[] = [ '--lsp', ...opts ];
+
   const serverOptions: Executable = {
-    command,
-    args: ['--lsp', '-vlsp.query:30', '-vimport.iface.create:30'],
+    command, args,
     transport: TransportKind.stdio,
   };
 
@@ -87,6 +92,7 @@ export function activate(context: ExtensionContext) {
     serverOptions,
     clientOptions
   );
+  agda = new LanguageClientConnection(client);
 
   // Start the client. This will also launch the server
   client.start();
@@ -103,8 +109,6 @@ export function activate(context: ExtensionContext) {
   const pro = window.registerWebviewViewProvider(AgdaInfoviewProvider.viewType, infoview);
   console.log(pro);
 
-  const agda = new LanguageClientConnection(client);
-
   window.onDidChangeTextEditorSelection(async (e) => {
     if (e.textEditor.document.uri.scheme !== 'file') return;
 
@@ -113,7 +117,7 @@ export function activate(context: ExtensionContext) {
         position: client.code2ProtocolConverter.asPosition(e.textEditor.selections[0].start),
         uri: e.textEditor.document.uri.toString(),
       });
-      console.log(ip)
+
       if (typeof ip !== 'number') {
         infoview.allGoals(e.textEditor.document.uri.toString())
       } else {
@@ -143,6 +147,32 @@ class AgdaInfoviewProvider implements WebviewViewProvider {
     };
 
     webviewView.webview.html = `<html>
+      <head>
+        <style>
+        span.agda.comment { color: var(--vscode-agda-comment); }
+        span.agda.keyword { color: var(--vscode-agda-keyword); }
+        span.agda.string { color: var(--vscode-agda-string); }
+        span.agda.number { color: var(--vscode-agda-number); }
+        span.agda.hole { color: var(--vscode-agda-hole); }
+        span.agda.symbol { color: var(--vscode-agda-symbol); }
+        span.agda.primitiveType { color: var(--vscode-agda-primitiveType); }
+        span.agda.bound { color: var(--vscode-agda-bound); }
+        span.agda.generalizable { color: var(--vscode-agda-generalizable); }
+        span.agda.constructor.inductive { color: var(--vscode-agda-constructorInductive); }
+        span.agda.constructor.coinductive { color: var(--vscode-agda-constructorCoinductive); }
+        span.agda.datatype { color: var(--vscode-agda-datatype); }
+        span.agda.field { color: var(--vscode-agda-field); }
+        span.agda.function { color: var(--vscode-agda-function); }
+        span.agda.module { color: var(--vscode-agda-module); }
+        span.agda.postulate { color: var(--vscode-agda-postulate); }
+        span.agda.primitive { color: var(--vscode-agda-primitive); }
+        span.agda.record { color: var(--vscode-agda-record); }
+        span.agda.argument { color: var(--vscode-agda-argument); }
+        span.agda.macro { color: var(--vscode-agda-macro); }
+        span.agda.pragma { color: var(--vscode-agda-pragma); }
+        </style>
+      </head>
+
       <body>
         <div id="container" style="font-size: 20pt; font-family: var(--vscode-editor-font-family);"></div>
       </body>
@@ -152,32 +182,54 @@ class AgdaInfoviewProvider implements WebviewViewProvider {
     `;
 
     webviewView.webview.onDidReceiveMessage(async (msg) => {
+      console.log(msg);
       if (msg.kind === 'RPCRequest') {
         console.log('Forwarding request', msg)
         const resp = await this.client.sendRequest('agda/query', msg.params);
+        console.log(resp);
 
         webviewView.webview.postMessage({
           kind:   'RPCReply',
           serial: msg.serial,
           data:   resp
         });
+      } else if (msg.kind === 'GoToGoal') {
+        window.showTextDocument(client.protocol2CodeConverter.asUri(msg.uri), {
+          selection: client.protocol2CodeConverter.asRange(msg.range as lsp.Range)
+        });
       }
     }, undefined, []);
+
+    this.client.onNotification('agda/infoview/refresh', async (uri: string) => {
+      const editor = window.visibleTextEditors.find((ed) => ed.document.uri.toString() === uri)
+      if (editor && editor.selections.length === 1) {
+        const ip = await agda.postRequest(rpc.Query.GoalAt, {
+          position: client.code2ProtocolConverter.asPosition(editor.selection.start),
+          uri
+        });
+
+        if (ip) { this.goal(ip, uri, true); return; }
+      }
+
+      this.allGoals(uri, true);
+    });
   }
 
-  allGoals(uri: string) {
+  allGoals(uri: string, refresh: boolean = false) {
     if (!this.view) return;
     this.view.webview.postMessage({
-      kind: 'Navigate',
-      route: `/?uri=${uri}`
+      kind: refresh ? 'Refresh' : 'Navigate',
+      route: `/`,
+      uri
     })
   }
 
-  goal(ip: number, uri: string) {
+  goal(ip: number, uri: string, refresh: boolean = false) {
     if (!this.view) return;
     this.view.webview.postMessage({
-      kind:  'Navigate',
-      route: `/goal/${ip}?uri=${uri}`
+      kind:  refresh ? 'Refresh' : 'Navigate',
+      route: `/goal/${ip}`,
+      uri
     })
   }
 }

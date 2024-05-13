@@ -1,5 +1,5 @@
 {
-  "name": "lsp-sample",
+  "name": "agda",
   "description": "A language server example",
   "author": "Microsoft Corporation",
   "license": "MIT",
@@ -17,7 +17,7 @@
     "vscode": "^1.75.0"
   },
   "activationEvents": [
-    "onLanguage:plaintext"
+    "onLanguage:agda"
   ],
   "main": "./out/src/extension.js",
   "contributes": {
@@ -58,11 +58,17 @@
       "type": "object",
       "title": "Agda",
       "properties": {
-        "agda.agdaExecutable": {
+        "agda.executable.path": {
           "scope": "window",
           "type": "string",
           "default": "agda",
-          "description": "The name or path to the Agda executable"
+          "description": "The name or path to the Agda executable."
+        },
+        "agda.executable.options": {
+          "scope": "window",
+          "type": "array",
+          "default": [],
+          "description": "Extra command-line options to pass to the Agda executable."
         },
         "agda.lspHighlightingLevel": {
           "scope": "resource",
@@ -90,6 +96,176 @@
         }
       }
     },
+    "colors": [
+      {
+        "id": "agda.comment",
+        "description": "Colour to use for comments.",
+        "defaults": {
+          "light": "#008000",
+          "dark": "#5C6370"
+        }
+      },
+      {
+        "id": "agda.keyword",
+        "description": "Colour to use for keywords.",
+        "defaults": {
+          "light": "#0000FF",
+          "dark": "#C678DD"
+        }
+      },
+      {
+        "id": "agda.string",
+        "description": "Colour to use for strings.",
+        "defaults": {
+          "light": "#A31515",
+          "dark": "#98C379"
+        }
+      },
+      {
+        "id": "agda.number",
+        "description": "Colour to use for numbers.",
+        "defaults": {
+          "light": "#098658",
+          "dark": "#D19A66"
+        }
+      },
+      {
+        "id": "agda.hole",
+        "description": "Colour to use for interaction points.",
+        "defaults": {
+          "light": "#008000",
+          "dark": "#5C6370"
+        }
+      },
+      {
+        "id": "agda.symbol",
+        "description": "Colour to use for symbols (punctuation).",
+        "defaults": {
+          "light": "editor.foreground",
+          "dark": "editor.foreground"
+        }
+      },
+      {
+        "id": "agda.primitiveType",
+        "description": "Colour to use for primitive types.",
+        "defaults": {
+          "light": "#795E26",
+          "dark": "#8080FF"
+        }
+      },
+      {
+        "id": "agda.bound",
+        "description": "Colour to use for bound names.",
+        "defaults": {
+          "light": "#795E26",
+          "dark": "#8080FF"
+        }
+      },
+      {
+        "id": "agda.generalizable",
+        "description": "Colour to use for generalizable names.",
+        "defaults": {
+          "light": "#795E26",
+          "dark": "#8080FF"
+        }
+      },
+      {
+        "id": "agda.constructorInductive",
+        "description": "Colour to use for inductive constructors.",
+        "defaults": {
+          "light": "#795E26",
+          "dark": "#8080FF"
+        }
+      },
+      {
+        "id": "agda.constructorCoinductive",
+        "description": "Colour to use for coinductive constructors.",
+        "defaults": {
+          "light": "#795E26",
+          "dark": "#8080FF"
+        }
+      },
+      {
+        "id": "agda.datatype",
+        "description": "Colour to use for datatype names.",
+        "defaults": {
+          "light": "#795E26",
+          "dark": "#8080FF"
+        }
+      },
+      {
+        "id": "agda.field",
+        "description": "Colour to use for field names.",
+        "defaults": {
+          "light": "#795E26",
+          "dark": "#8080FF"
+        }
+      },
+      {
+        "id": "agda.function",
+        "description": "Colour to use for function names.",
+        "defaults": {
+          "light": "#795E26",
+          "dark": "#8080FF"
+        }
+      },
+      {
+        "id": "agda.module",
+        "description": "Colour to use for module names.",
+        "defaults": {
+          "light": "#795E26",
+          "dark": "#8080FF"
+        }
+      },
+      {
+        "id": "agda.postulate",
+        "description": "Colour to use for postulate names.",
+        "defaults": {
+          "light": "#795E26",
+          "dark": "#8080FF"
+        }
+      },
+      {
+        "id": "agda.primitive",
+        "description": "Colour to use for primitive names.",
+        "defaults": {
+          "light": "#795E26",
+          "dark": "#8080FF"
+        }
+      },
+      {
+        "id": "agda.record",
+        "description": "Colour to use for record names.",
+        "defaults": {
+          "light": "#795E26",
+          "dark": "#8080FF"
+        }
+      },
+      {
+        "id": "agda.argument",
+        "description": "Colour to use for argument names.",
+        "defaults": {
+          "light": "#795E26",
+          "dark": "#8080FF"
+        }
+      },
+      {
+        "id": "agda.macro",
+        "description": "Colour to use for macro names.",
+        "defaults": {
+          "light": "#795E26",
+          "dark": "#8080FF"
+        }
+      },
+      {
+        "id": "agda.pragma",
+        "description": "Colour to use for the text inside a pragma.",
+        "defaults": {
+          "light": "#008000",
+          "dark": "#5C6370"
+        }
+      }
+    ],
     "semanticTokenScopes": [
       {
         "language": "agda",

@@ -1,7 +1,7 @@
 import * as lsp from 'vscode-languageclient/node';
 // import { TextEditor } from 'vscode';
 
-export type Fragment = { tag: string, children: Fragment[] } | string
+export type Fragment = { style: string[], children: Fragment[] } | string
 export type Doc = Fragment[]
 
 export type Goal = {
