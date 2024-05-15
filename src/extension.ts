@@ -149,27 +149,101 @@ class AgdaInfoviewProvider implements WebviewViewProvider {
     webviewView.webview.html = `<html>
       <head>
         <style>
-        span.agda.comment { color: var(--vscode-agda-comment); }
-        span.agda.keyword { color: var(--vscode-agda-keyword); }
-        span.agda.string { color: var(--vscode-agda-string); }
-        span.agda.number { color: var(--vscode-agda-number); }
-        span.agda.hole { color: var(--vscode-agda-hole); }
-        span.agda.symbol { color: var(--vscode-agda-symbol); }
-        span.agda.primitiveType { color: var(--vscode-agda-primitiveType); }
-        span.agda.bound { color: var(--vscode-agda-bound); }
-        span.agda.generalizable { color: var(--vscode-agda-generalizable); }
-        span.agda.constructor.inductive { color: var(--vscode-agda-constructorInductive); }
-        span.agda.constructor.coinductive { color: var(--vscode-agda-constructorCoinductive); }
-        span.agda.datatype { color: var(--vscode-agda-datatype); }
-        span.agda.field { color: var(--vscode-agda-field); }
-        span.agda.function { color: var(--vscode-agda-function); }
-        span.agda.module { color: var(--vscode-agda-module); }
-        span.agda.postulate { color: var(--vscode-agda-postulate); }
-        span.agda.primitive { color: var(--vscode-agda-primitive); }
-        span.agda.record { color: var(--vscode-agda-record); }
-        span.agda.argument { color: var(--vscode-agda-argument); }
-        span.agda.macro { color: var(--vscode-agda-macro); }
-        span.agda.pragma { color: var(--vscode-agda-pragma); }
+          span.agda.comment { color: var(--vscode-agda-comment); }
+          span.agda.keyword { color: var(--vscode-agda-keyword); }
+          span.agda.string { color: var(--vscode-agda-string); }
+          span.agda.number { color: var(--vscode-agda-number); }
+          span.agda.hole { color: var(--vscode-agda-hole); }
+          span.agda.symbol { color: var(--vscode-agda-symbol); }
+          span.agda.primitiveType { color: var(--vscode-agda-primitiveType); }
+          span.agda.bound { color: var(--vscode-agda-bound); }
+          span.agda.generalizable { color: var(--vscode-agda-generalizable); }
+          span.agda.inductiveconstructor { color: var(--vscode-agda-constructorInductive); }
+          span.agda.coinductiveconstructor { color: var(--vscode-agda-constructorCoinductive); }
+          span.agda.datatype { color: var(--vscode-agda-datatype); }
+          span.agda.field { color: var(--vscode-agda-field); }
+          span.agda.function { color: var(--vscode-agda-function); }
+          span.agda.module { color: var(--vscode-agda-module); }
+          span.agda.postulate { color: var(--vscode-agda-postulate); }
+          span.agda.primitive { color: var(--vscode-agda-primitive); }
+          span.agda.record { color: var(--vscode-agda-record); }
+          span.agda.argument { color: var(--vscode-agda-argument); }
+          span.agda.macro { color: var(--vscode-agda-macro); }
+          span.agda.pragma { color: var(--vscode-agda-pragma); }
+
+          div.sections {
+            display: flex;
+            flex-direction: column;
+
+            gap: 0.5em;
+
+            max-width: 100%;
+            max-height: 100%;
+          }
+
+          div.lines {
+            display: flex;
+            flex-direction: column;
+          }
+
+          .block {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2em;
+          }
+
+          .section {
+            width: 100%;
+            gap: 0.75em;
+
+            padding-inline: 0.5em;
+            padding-block: 0.1ex;
+            border-left: 3px solid var(--vscode-agda-function);
+
+            background-color: var(--vscode-sideBar-background);
+
+            overflow-y: auto;
+          }
+
+          .section-header {
+            font-variant: small-caps;
+          }
+
+          summary.section-header::marker {
+            font-size: 0.75em;
+            text-align: center !important;
+          }
+
+          .section ul.entry-list {
+            flex-direction: column;
+            display: flex;
+
+            list-style-type: none;
+
+            padding-inline-start: 0;
+            margin: 0;
+          }
+
+          a:hover {
+            text-decoration: underline;
+          }
+
+          span.agda {
+            white-space: pre;
+          }
+
+          span.face {
+            display: flex;
+            gap: 1ex;
+          }
+
+          .out-of-scope span.agda {
+            color: var(--vscode-agda-comment) !important;
+          }
+
+          .out-of-scope-label {
+            float: right;
+          }
         </style>
       </head>
 
@@ -219,7 +293,7 @@ class AgdaInfoviewProvider implements WebviewViewProvider {
     if (!this.view) return;
     this.view.webview.postMessage({
       kind: refresh ? 'Refresh' : 'Navigate',
-      route: `/`,
+      route: `/goals`,
       uri
     })
   }

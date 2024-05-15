@@ -10,18 +10,33 @@ export type Goal = {
   goalRange: lsp.Range
 }
 
-export type Entry = {
-  localName:        Doc,
-  localReifiedName: Doc,
-  localType:        Doc
+export type Local = {
+  localBinder:      Doc,
+  localBindingSite: lsp.Range | null,
+  localValue:       Doc | null,
+  localInScope:     boolean,
+  localHiding:      Hiding,
+  localModality:    Modality
 }
 
-export type Context = Entry[]
+export type Modality = {
+  modRelevance: Relevance,
+  modQuantity:  Quantity,
+  modCohesion:  Cohesion,
+}
+
+export type Context = Local[]
 
 export type GoalInfo = {
-  goalGoal: Goal,
-  goalContext: Context,
+  goalGoal:     Goal,
+  goalContext:  Context,
+  goalBoundary: Doc[] | null
 };
+
+export type Relevance = "Relevant"  | "NonStrict"  | "Irrelevant";
+export type Quantity  = "Quantity0" | "Quantity1"  | "Quantityω";
+export type Cohesion  = "Flat"      | "Continuous" | "Sharp";
+export type Hiding    = "Hidden"    | "Instance"   | "NotHidden";
 
 export type Rewrite = "AsIs" | "Instantiated" | "HeadNormal" | "Simplified" | "Normalised";
 

@@ -157,16 +157,16 @@
         "id": "agda.bound",
         "description": "Colour to use for bound names.",
         "defaults": {
-          "light": "#795E26",
-          "dark": "#8080FF"
+          "light": "editor.foreground",
+          "dark": "editor.foreground"
         }
       },
       {
         "id": "agda.generalizable",
         "description": "Colour to use for generalizable names.",
         "defaults": {
-          "light": "#795E26",
-          "dark": "#8080FF"
+          "light": "editor.foreground",
+          "dark": "editor.foreground"
         }
       },
       {
@@ -174,7 +174,7 @@
         "description": "Colour to use for inductive constructors.",
         "defaults": {
           "light": "#795E26",
-          "dark": "#8080FF"
+          "dark": "#29CC29"
         }
       },
       {
@@ -182,7 +182,7 @@
         "description": "Colour to use for coinductive constructors.",
         "defaults": {
           "light": "#795E26",
-          "dark": "#8080FF"
+          "dark": "#29CC29"
         }
       },
       {

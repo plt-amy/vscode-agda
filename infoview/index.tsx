@@ -124,7 +124,7 @@ const renderDoc = (doc: rpc.Doc) => <>
 </>
 
 const Doc: React.FC<{ it: rpc.Doc }> = ({ it }) => {
-  return <span className="agda-printed">
+  return <span className="agda">
     {renderDoc(it)}
   </span>
 }
@@ -146,10 +146,40 @@ const GoalType: React.FC<{ goal: rpc.Goal }> = ({ goal }) => {
 const AllGoals = () => {
   const goals = useQuery(rpc.Query.AllGoals, { });
 
-  return <div style={{display: "flex", flexDirection: "column"}}>
-    {...(goals ?? []).map((g) => <GoalType goal={g} />)}
-  </div>
+  return <Section title="All Goals">
+    <ul className="entry-list">
+      {...(goals ?? []).map((g) => <GoalType goal={g} />)}
+    </ul>
+  </Section>
 };
+
+const Section: React.FC<{ title: string, children: React.ReactNode }> =
+  ({ title, children }) =>
+    <details className="section block" open>
+      <summary className="section-header">{title.toLowerCase()}</summary>
+      {children}
+    </details>
+
+const Entry: React.FC<{ entry: rpc.Local }> = ({ entry }) =>
+  <li className={`${!entry.localInScope && "out-of-scope"}`}>
+    <div className="lines">
+      <span className="agda">
+        <Doc it={entry.localBinder} />
+        {!entry.localInScope && <span className="out-of-scope-label">Not in scope</span>}
+      </span>
+
+      {entry.localValue && <Doc it={entry.localValue} />}
+    </div>
+  </li>
+
+const Boundary: React.FC<{ boundary: rpc.Doc[] }> = ({ boundary }) =>
+  <Section title="Boundary">
+    <ul className="entry-list">
+      {...boundary.map((face) => <li>
+        <Doc it={face} />
+      </li>)}
+    </ul>
+  </Section>
 
 const Goal = () => {
   const { id: ids } = useParams<{ id: string }>();
@@ -160,15 +190,21 @@ const Goal = () => {
     goal: id
   })
   console.log('YYY', goal);
+  let context = goal?.goalContext ?? [];
 
-  return <div>
-    <span>
-      <span>Goal </span>
-      {goal && <GoalType goal={goal.goalGoal} />}
-    </span>
-    <ul>
-      {...(goal?.goalContext ?? []).map((e: rpc.Entry) => <li key={e.localName.toString()}>{renderDoc(e.localName)} : <Doc it={e.localType} /></li>)}
-    </ul>
+  return goal && <div className="sections">
+    <Section title="Goal">
+      <GoalType goal={goal.goalGoal} />
+    </Section>
+
+    {goal.goalBoundary && <Boundary boundary={goal.goalBoundary} />}
+
+    {context.length >= 1 && <Section title="Context">
+      <ul className="entry-list">
+        {...context.map((e: rpc.Local) => <Entry entry={e} />)}
+      </ul>
+    </Section>}
+
   </div>;
 }
 
@@ -176,7 +212,8 @@ function Document() {
   return <MemoryRouter>
     <EventNavigation>
       <Routes>
-        <Route path="/" element={<AllGoals />} />
+        <Route path="/" element={<>Loading...</>} />
+        <Route path="/goals" element={<AllGoals />} />
         <Route path="/goal/:id" element={<Goal />} />
       </Routes>
     </EventNavigation>
