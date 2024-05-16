@@ -310,6 +310,32 @@
         "scopeName": "source.agda",
         "path": "./syntaxes/agda.tmLanguage.json"
       }
+    ],
+    "keybindings": [
+      {
+        "key": "ctrl+c ctrl+a",
+        "command": "editor.action.codeAction",
+        "when": "editorLangId == agda",
+        "args": {
+          "kind": "agda.auto"
+        }
+      },
+      {
+        "key": "ctrl+c ctrl+r",
+        "command": "editor.action.codeAction",
+        "when": "editorLangId == agda",
+        "args": {
+          "kind": "agda.refine"
+        }
+      },
+      {
+        "key": "ctrl+c ctrl+space",
+        "command": "editor.action.codeAction",
+        "when": "editorLangId == agda",
+        "args": {
+          "kind": "agda.give"
+        }
+      }
     ]
   },
   "scripts": {
