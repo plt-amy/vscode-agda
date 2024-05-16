@@ -16,9 +16,6 @@
   "engines": {
     "vscode": "^1.75.0"
   },
-  "activationEvents": [
-    "onLanguage:agda"
-  ],
   "main": "./out/src/extension.js",
   "contributes": {
     "languages": [
@@ -295,6 +292,16 @@
             "constant.other.symbol"
           ]
         }
+      }
+    ],
+    "commands": [
+      {
+        "command": "agda.nextGoal",
+        "title": "Agda: Select next interaction point"
+      },
+      {
+        "command": "agda.prevGoal",
+        "title": "Agda: Select previous interaction point"
       }
     ],
     "grammars": [

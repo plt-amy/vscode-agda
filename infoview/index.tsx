@@ -60,28 +60,11 @@ function useQuery<P extends {}, R>(query: rpc.Query<P, R>, param: P, deps: React
   const doc = React.useContext(DocumentContext);
   console.log('XXX', doc);
 
-  let seen: Record<any, boolean> = {}
-  const depl = [...deps, doc.version, doc.uri];
-  const explore = (e: any) => {
-    if (seen[e]) return;
-    seen[e] = true;
-
-    if (typeof e === 'object') {
-      for (const k of Object.keys(e)) {
-        depl.push(e[k]);
-      }
-    } else {
-      depl.push(e)
-    }
-  }
-  explore(param);
-  console.log('XXX', depl)
-
   React.useEffect(() => {
-    if (!doc.uri) return;
+    if (!doc.uri || doc.uri === 'about:blank') return;
 
     agda.postRequest(query, Object.assign({}, param, { uri: doc.uri })).then((value) => setOut(value))
-  }, depl);
+  }, [...deps, doc.uri, doc.version]);
 
   return out;
 }
@@ -111,20 +94,32 @@ const EventNavigation: React.FC<{children?: React.ReactNode}> = ({ children }) =
 
 const docClasses = ({ style }: { style: string[] }) => ["agda", ...style].join(" ");
 
+const Collapsible: React.FC<{ children: React.ReactNode, className: string }> = ({ children, className }) => {
+  const [open, setOpen] = React.useState(true);
+  return <span className={className + (open ? " " : " collapsed")} onClick={(e) => { e.stopPropagation(); setOpen(!open) }}>
+    <span className="children">
+      {children}
+    </span>
+  </span>;
+}
+
 const renderDoc = (doc: rpc.Doc) => <>
   {doc.map(e => {
     if (typeof e === 'string') {
       return <>{e}</>
+    } else if (e.style.find(x => x === 'subtree')) {
+      return <Collapsible className={docClasses(e)}>{renderDoc(e.children)}</Collapsible>
     } else {
       return <span className={docClasses(e)}>
         {renderDoc(e.children)}
       </span>
     }
   })}
-</>
+</>;
+
 
 const Doc: React.FC<{ it: rpc.Doc }> = ({ it }) => {
-  return <span className="agda">
+  return <span className="agda-container">
     {renderDoc(it)}
   </span>
 }
@@ -138,39 +133,70 @@ const GoalType: React.FC<{ goal: rpc.Goal }> = ({ goal }) => {
     range: goal.goalRange
   });
 
-  return <span>
-    <a onClick={goto}>?{goal.goalId}</a> : <Doc it={goal.goalType} />
+  return <span style={{display: 'flex', alignItems: 'flex-start', gap: '1ex'}}>
+    <a onClick={goto}>{`?${goal.goalId}`}</a> : <Doc it={goal.goalType} />
   </span>;
 }
 
 const AllGoals = () => {
-  const goals = useQuery(rpc.Query.AllGoals, { });
+  const goals = useQuery(rpc.Query.AllGoals, { types: true });
 
-  return <Section title="All Goals">
-    <ul className="entry-list">
-      {...(goals ?? []).map((g) => <GoalType goal={g} />)}
-    </ul>
-  </Section>
+  if (goals && goals.length >= 1) {
+    return <div>
+      <Section title="Goals">
+        <ul className="entry-list" style={{gap: '1em'}}>
+          {...(goals ?? []).map((g) => <GoalType goal={g} />)}
+        </ul>
+      </Section>
+    </div>
+  } else if (goals) {
+    return <div>
+      <Section title="Goals">
+        <span className="agda">All done 🎉</span>
+      </Section>
+    </div>
+  } else {
+    return <div>
+      <Section title="Goals">
+        <span className="agda">Loading...</span>
+      </Section>
+    </div>
+  }
 };
 
-const Section: React.FC<{ title: string, children: React.ReactNode }> =
-  ({ title, children }) =>
-    <details className="section block" open>
+const Section: React.FC<{ title: string, children: React.ReactNode, open?: boolean }> =
+  ({ title, children, open }) =>
+    <details className="section block" open={(open === undefined) ? true : open}>
       <summary className="section-header">{title.toLowerCase()}</summary>
       {children}
     </details>
 
-const Entry: React.FC<{ entry: rpc.Local }> = ({ entry }) =>
-  <li className={`${!entry.localInScope && "out-of-scope"}`}>
+const Entry: React.FC<{ entry: rpc.Local }> = ({ entry }) => {
+
+  const mkFlag = (f: rpc.LocalFlag, index: number) => {
+    switch (f.tag) {
+      case 'NotInScope':   return (index === 0) ? 'Not in scope' : 'not in scope';
+      case 'Inaccessible': return (index === 0) ? f.contents : f.contents.toLowerCase();
+      case 'Erased':       return (index === 0) ? 'Erased' : 'erased';
+      case 'Instance':     return (index === 0) ? 'Instance' : 'instance';
+    }
+  }
+
+  return <li className={`${!entry.localFlags || "out-of-scope"}`}>
     <div className="lines">
       <span className="agda">
         <Doc it={entry.localBinder} />
-        {!entry.localInScope && <span className="out-of-scope-label">Not in scope</span>}
+        {
+          entry.localFlags &&
+          entry.localFlags.length >= 1 &&
+          <span className="out-of-scope-label">{entry.localFlags.map(mkFlag).join(", ")}</span>
+        }
       </span>
 
       {entry.localValue && <Doc it={entry.localValue} />}
     </div>
   </li>
+}
 
 const Boundary: React.FC<{ boundary: rpc.Doc[] }> = ({ boundary }) =>
   <Section title="Boundary">
@@ -181,14 +207,31 @@ const Boundary: React.FC<{ boundary: rpc.Doc[] }> = ({ boundary }) =>
     </ul>
   </Section>
 
+const RunningInfo = () => {
+  const doc = React.useContext(DocumentContext)
+  const [messages, setMessages] = React.useState<string[]>([])
+
+  if (!doc.uri || doc.uri === 'about:blank') return <></>;
+
+  window.addEventListener('message', (ev) => {
+    if (ev.data.kind === 'RunningInfo') {
+      setMessages([...messages, ev.data.message])
+    }
+  })
+
+  return <Section title="Loading">
+    <div className="running-info">
+      {...messages.map((s) => <span>{s}</span>)}
+    </div>
+  </Section>
+}
+
 const Goal = () => {
   const { id: ids } = useParams<{ id: string }>();
   const id = Number.parseInt(ids ?? '');
   if (typeof id !== 'number') return;
 
-  const goal = useQuery(rpc.Query.GoalInfo, {
-    goal: id
-  })
+  const goal = useQuery(rpc.Query.GoalInfo, { goal: id }, [id])
   console.log('YYY', goal);
   let context = goal?.goalContext ?? [];
 
@@ -212,8 +255,8 @@ function Document() {
   return <MemoryRouter>
     <EventNavigation>
       <Routes>
-        <Route path="/" element={<>Loading...</>} />
-        <Route path="/goals" element={<AllGoals />} />
+        <Route path="/"         element={<RunningInfo />} />
+        <Route path="/goals"    element={<AllGoals />} />
         <Route path="/goal/:id" element={<Goal />} />
       </Routes>
     </EventNavigation>

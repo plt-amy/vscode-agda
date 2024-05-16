@@ -6,8 +6,8 @@
 import {
   workspace, ExtensionContext, languages,
   DocumentSemanticTokensProvider, CancellationToken,
-  SemanticTokens, TextDocument, Event, Uri, window, EventEmitter, WebviewViewProvider, WebviewView, WebviewViewResolveContext
-} from 'vscode';
+  SemanticTokens, TextDocument, Event, window, EventEmitter} from 'vscode';
+import * as vscode from 'vscode';
 import { SemanticTokensFeature } from 'vscode-languageclient/lib/common/semanticTokens';
 
 import {
@@ -18,22 +18,23 @@ import {
   SemanticTokensRefreshRequest,
   SemanticTokensRequest,
 } from 'vscode-languageclient/node';
-import * as lsp from 'vscode-languageclient/node';
 
+import * as lsp from 'vscode-languageclient/node';
 import * as rpc from '../api/rpc';
+import { AgdaInfoviewProvider } from './AgdaInfoviewProvider';
 
 class LanguageClientConnection implements rpc.Connection {
   constructor(private readonly client: LanguageClient) { }
 
-  async postRequest<P extends {}, R>(query: rpc.Query<P, R>, params: P & { uri: string }): Promise<R> {
-    return await this.client.sendRequest('agda/query', Object.assign({}, params, {
+  postRequest<P extends {}, R>(query: rpc.Query<P, R>, params: P & { uri: string }): Promise<R> {
+    return this.client.sendRequest('agda/query', Object.assign({}, params, {
       kind: query.kind,
     }));
   }
 }
 
-let client: LanguageClient;
-let agda: rpc.Connection;
+export let client: LanguageClient;
+export let agda: rpc.Connection;
 
 class AgdaTokenProvider implements DocumentSemanticTokensProvider {
   private readonly emitter: EventEmitter<void> = new EventEmitter();
@@ -59,6 +60,37 @@ class AgdaTokenProvider implements DocumentSemanticTokensProvider {
   async provideDocumentSemanticTokensEdits(document: TextDocument, _previous: string, token: CancellationToken): Promise<SemanticTokens> {
     return this.provideDocumentSemanticTokens(document, token);
   }
+}
+
+const highlight = window.createTextEditorDecorationType({
+  backgroundColor: new vscode.ThemeColor('editor.selectionHighlightBackground')
+})
+
+let decorations: vscode.TextEditorDecorationType[] = [];
+
+const decorateGoals = ({ goals, uri }: { goals: rpc.Goal[], uri: string }) => {
+  const editor = window.visibleTextEditors.find((e) => e.document.uri.toString() === uri);
+  if (!editor) return;
+
+  decorations.forEach(d => d.dispose());
+  decorations = [];
+
+  const rs: vscode.Range[] = [];
+
+  goals.forEach(({ goalId, goalRange }) => {
+    const r = client.protocol2CodeConverter.asRange(goalRange);
+    rs.push(new vscode.Range(r.start, r.end.translate(0, goalId.toString().length)));
+    const dec = window.createTextEditorDecorationType({
+      after: {
+        contentText: goalId.toString(),
+        color: new vscode.ThemeColor('charts.yellow')
+      }
+    });
+    decorations.push(dec);
+    editor.setDecorations(dec, [r]);
+  });
+
+  editor.setDecorations(highlight, rs);
 }
 
 export function activate(context: ExtensionContext) {
@@ -105,207 +137,110 @@ export function activate(context: ExtensionContext) {
     );
   });
 
-  const infoview = new AgdaInfoviewProvider(context.extensionUri, client);
-  const pro = window.registerWebviewViewProvider(AgdaInfoviewProvider.viewType, infoview);
-  console.log(pro);
+  const infoview = new AgdaInfoviewProvider(context, client);
+  context.subscriptions.push(window.registerWebviewViewProvider(AgdaInfoviewProvider.viewType, infoview));
 
-  window.onDidChangeTextEditorSelection(async (e) => {
-    if (e.textEditor.document.uri.scheme !== 'file') return;
+  window.onDidChangeTextEditorSelection((e) => {
+    if (e.textEditor.document.uri.scheme !== 'file' || e.textEditor.document.languageId !== 'agda')
+      return;
 
     if (e.selections.length === 1) {
-      const ip = await agda.postRequest(rpc.Query.GoalAt, {
-        position: client.code2ProtocolConverter.asPosition(e.textEditor.selections[0].start),
+      agda.postRequest(rpc.Query.GoalAt, {
+        position: e.textEditor.selections[0].start,
         uri: e.textEditor.document.uri.toString(),
+      }).then(ip => {
+        if (typeof ip !== 'number') {
+          infoview.allGoals(e.textEditor.document.uri.toString())
+        } else {
+          infoview.goal(ip, e.textEditor.document.uri.toString());
+        };
       });
-
-      if (typeof ip !== 'number') {
-        infoview.allGoals(e.textEditor.document.uri.toString())
-      } else {
-        infoview.goal(ip, e.textEditor.document.uri.toString());
-      };
     }
   });
-}
 
-class AgdaInfoviewProvider implements WebviewViewProvider {
-  public static readonly viewType = 'agda.infoView';
-  private readonly extensionUri: Uri;
-  private view?: WebviewView;
+  const status = window.createStatusBarItem(vscode.StatusBarAlignment.Left, 0);
+  status.tooltip = 'Agda';
+  context.subscriptions.push(status);
+  client.onNotification('agda/infoview/refresh', (uri: string) => {
+    infoview.refresh(uri);
 
-  constructor(extensionUri: Uri, private readonly client: LanguageClient) {
-    this.extensionUri = extensionUri;
-  }
-
-  resolveWebviewView(webviewView: WebviewView, context: WebviewViewResolveContext<unknown>, token: CancellationToken): void | Thenable<void> {
-    console.log(webviewView, context, token);
-    this.view = webviewView;
-    webviewView.show();
-
-    webviewView.webview.options = {
-      // Allow scripts in the webview
-      enableScripts: true,
-    };
-
-    webviewView.webview.html = `<html>
-      <head>
-        <style>
-          span.agda.comment { color: var(--vscode-agda-comment); }
-          span.agda.keyword { color: var(--vscode-agda-keyword); }
-          span.agda.string { color: var(--vscode-agda-string); }
-          span.agda.number { color: var(--vscode-agda-number); }
-          span.agda.hole { color: var(--vscode-agda-hole); }
-          span.agda.symbol { color: var(--vscode-agda-symbol); }
-          span.agda.primitiveType { color: var(--vscode-agda-primitiveType); }
-          span.agda.bound { color: var(--vscode-agda-bound); }
-          span.agda.generalizable { color: var(--vscode-agda-generalizable); }
-          span.agda.inductiveconstructor { color: var(--vscode-agda-constructorInductive); }
-          span.agda.coinductiveconstructor { color: var(--vscode-agda-constructorCoinductive); }
-          span.agda.datatype { color: var(--vscode-agda-datatype); }
-          span.agda.field { color: var(--vscode-agda-field); }
-          span.agda.function { color: var(--vscode-agda-function); }
-          span.agda.module { color: var(--vscode-agda-module); }
-          span.agda.postulate { color: var(--vscode-agda-postulate); }
-          span.agda.primitive { color: var(--vscode-agda-primitive); }
-          span.agda.record { color: var(--vscode-agda-record); }
-          span.agda.argument { color: var(--vscode-agda-argument); }
-          span.agda.macro { color: var(--vscode-agda-macro); }
-          span.agda.pragma { color: var(--vscode-agda-pragma); }
-
-          div.sections {
-            display: flex;
-            flex-direction: column;
-
-            gap: 0.5em;
-
-            max-width: 100%;
-            max-height: 100%;
-          }
-
-          div.lines {
-            display: flex;
-            flex-direction: column;
-          }
-
-          .block {
-            display: flex;
-            flex-direction: column;
-            gap: 0.2em;
-          }
-
-          .section {
-            width: 100%;
-            gap: 0.75em;
-
-            padding-inline: 0.5em;
-            padding-block: 0.1ex;
-            border-left: 3px solid var(--vscode-agda-function);
-
-            background-color: var(--vscode-sideBar-background);
-
-            overflow-y: auto;
-          }
-
-          .section-header {
-            font-variant: small-caps;
-          }
-
-          summary.section-header::marker {
-            font-size: 0.75em;
-            text-align: center !important;
-          }
-
-          .section ul.entry-list {
-            flex-direction: column;
-            display: flex;
-
-            list-style-type: none;
-
-            padding-inline-start: 0;
-            margin: 0;
-          }
-
-          a:hover {
-            text-decoration: underline;
-          }
-
-          span.agda {
-            white-space: pre;
-          }
-
-          span.face {
-            display: flex;
-            gap: 1ex;
-          }
-
-          .out-of-scope span.agda {
-            color: var(--vscode-agda-comment) !important;
-          }
-
-          .out-of-scope-label {
-            float: right;
-          }
-        </style>
-      </head>
-
-      <body>
-        <div id="container" style="font-size: 20pt; font-family: var(--vscode-editor-font-family);"></div>
-      </body>
-
-      <script src="${webviewView.webview.asWebviewUri(Uri.joinPath(this.extensionUri, "out", "infoview", "index.js"))}"></script>
-    </html>
-    `;
-
-    webviewView.webview.onDidReceiveMessage(async (msg) => {
-      console.log(msg);
-      if (msg.kind === 'RPCRequest') {
-        console.log('Forwarding request', msg)
-        const resp = await this.client.sendRequest('agda/query', msg.params);
-        console.log(resp);
-
-        webviewView.webview.postMessage({
-          kind:   'RPCReply',
-          serial: msg.serial,
-          data:   resp
-        });
-      } else if (msg.kind === 'GoToGoal') {
-        window.showTextDocument(client.protocol2CodeConverter.asUri(msg.uri), {
-          selection: client.protocol2CodeConverter.asRange(msg.range as lsp.Range)
-        });
-      }
-    }, undefined, []);
-
-    this.client.onNotification('agda/infoview/refresh', async (uri: string) => {
-      const editor = window.visibleTextEditors.find((ed) => ed.document.uri.toString() === uri)
-      if (editor && editor.selections.length === 1) {
-        const ip = await agda.postRequest(rpc.Query.GoalAt, {
-          position: client.code2ProtocolConverter.asPosition(editor.selection.start),
-          uri
-        });
-
-        if (ip) { this.goal(ip, uri, true); return; }
-      }
-
-      this.allGoals(uri, true);
+    agda.postRequest(rpc.Query.ModuleName, {uri}).then((mod) => {
+      status.text = `$(check) ${mod}`
+      status.show();
     });
-  }
+  });
 
-  allGoals(uri: string, refresh: boolean = false) {
-    if (!this.view) return;
-    this.view.webview.postMessage({
-      kind: refresh ? 'Refresh' : 'Navigate',
-      route: `/goals`,
-      uri
-    })
-  }
+  client.onNotification('agda/goals', (resp) => decorateGoals(resp));
 
-  goal(ip: number, uri: string, refresh: boolean = false) {
-    if (!this.view) return;
-    this.view.webview.postMessage({
-      kind:  refresh ? 'Refresh' : 'Navigate',
-      route: `/goal/${ip}`,
-      uri
-    })
-  }
+  window.onDidChangeActiveTextEditor((e) => {
+    if (!e || e.document.uri.scheme !== 'file' || e.document.languageId !== 'agda') {
+      status.hide();
+      infoview.hide();
+    } else {
+      status.show();
+      status.text = `$(loading~spin)`
+
+      agda.postRequest(rpc.Query.ModuleName, {uri: e.document.uri.toString()}).then(async (mod) => {
+        status.text = `$(check) ${mod}`
+
+        const uri = e.document.uri.toString();
+        const goals = await agda.postRequest(rpc.Query.AllGoals, { types: false, uri });
+        decorateGoals({goals, uri});
+      });
+    }
+  });
+
+  context.subscriptions.push(vscode.commands.registerCommand('agda.nextGoal', async () => {
+    const e = window.activeTextEditor;
+    if (!e || e.document.uri.scheme !== 'file' || e.selections.length > 1) return;
+
+    let sel = e.selection!;
+
+    const goals = await agda.postRequest(rpc.Query.AllGoals, {
+      types: false,
+      uri: e.document.uri.toString()
+    });
+    if (goals.length < 1) return;
+
+    const compare = (p1: lsp.Position, p2: lsp.Position) =>
+      (p1.line >= p2.line) || (p1.line == p2.line && p1.character >= p2.character);
+
+    let next = goals.find(({ goalRange: { start, end } }) =>
+      compare(start, sel.active) && !compare(sel.active, end));
+
+    if (!next) next = goals[0];
+
+    e.revealRange(client.protocol2CodeConverter.asRange(next.goalRange))
+    e.selection = new vscode.Selection(
+      client.protocol2CodeConverter.asPosition(next.goalRange.start),
+      client.protocol2CodeConverter.asPosition(next.goalRange.end),
+    );
+  }), vscode.commands.registerCommand('agda.prevGoal', async () => {
+    const e = window.activeTextEditor;
+    if (!e || e.document.uri.scheme !== 'file' || e.selections.length > 1) return;
+
+    let sel = e.selection!;
+
+    const goals = await agda.postRequest(rpc.Query.AllGoals, {
+      types: false,
+      uri: e.document.uri.toString()
+    });
+    if (goals.length < 1) return;
+    console.log('Going backwards', goals);
+
+    const compare = (p1: lsp.Position, p2: lsp.Position) =>
+      (p1.line >= p2.line) || (p1.line == p2.line && p1.character >= p2.character);
+
+    let prev = goals.reverse().find(({ goalRange: { end } }) => compare(end, sel.active));
+
+    if (!prev) prev = goals[0];
+
+    e.revealRange(client.protocol2CodeConverter.asRange(prev.goalRange))
+    e.selection = new vscode.Selection(
+      client.protocol2CodeConverter.asPosition(prev.goalRange.start),
+      client.protocol2CodeConverter.asPosition(prev.goalRange.end),
+    );
+  }))
 }
 
 export function deactivate(): Thenable<void> | undefined {

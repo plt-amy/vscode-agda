@@ -10,11 +10,17 @@ export type Goal = {
   goalRange: lsp.Range
 }
 
+export type LocalFlag =
+  { tag: "NotInScope" } |
+  { tag: "Inaccessible", contents: Relevance } |
+  { tag: "Erased" } |
+  { tag: "Instance" }
+
 export type Local = {
   localBinder:      Doc,
   localBindingSite: lsp.Range | null,
   localValue:       Doc | null,
-  localInScope:     boolean,
+  localFlags:       LocalFlag[] | null,
   localHiding:      Hiding,
   localModality:    Modality
 }
@@ -45,8 +51,9 @@ export class Query<P extends {}, R> {
   private constructor(public readonly kind: string) { }
 
   public static GoalAt: Query<{ position: lsp.Position }, number | null> = new Query('GoalAt');
-  public static AllGoals: Query<{}, Goal[]> = new Query('AllGoals');
+  public static AllGoals: Query<{ types: boolean }, Goal[]> = new Query('AllGoals');
   public static GoalInfo: Query<{ goal: number }, GoalInfo> = new Query('GoalInfo');
+  public static ModuleName: Query<{}, Doc | null> = new Query('ModuleName');
 }
 
 
