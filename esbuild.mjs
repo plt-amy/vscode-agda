@@ -5,41 +5,71 @@ import esbuild from "esbuild";
 const isProduction = process.argv.includes("--production");
 const watch = process.argv.includes("--watch");
 
-(async () => {
-  const context = await esbuild.context({
-    logLevel: "info",
-    metafile: true,
-    sourcemap: true,
+/**
+ * @typedef {import('esbuild').BuildOptions} BuildOptions
+ */
 
-    // Input options
-    entryPoints: ["src/extension.ts", "infoview/index.tsx"],
+/** @type BuildOptions */
+const sharedOptions = {
+  logLevel: "info",
+  metafile: true,
+  sourcemap: true,
 
-    external: [
-      "vscode",
-      "path",
-    ],
+  bundle: true,
+  define: {
+    "process.env.NODE_ENV": `"${isProduction ? "production" : "development"}"`,
+  },
 
-    // Processing options
-    bundle: true,
-    define: {
-      "process.env.NODE_ENV": `"${isProduction ? "production" : "development"}"`,
-    },
+  external: ['vscode'],
+  target: 'es2020',
+  sourcemap: true,
 
-    // Output options
-    outdir: "out",
-    platform: 'node',
-    format: "cjs",
-    minify: isProduction,
-    legalComments: "none",
-    target: "es6",
-  });
+  minify: isProduction,
+  legalComments: "none",
+};
+
+/** @type BuildOptions */
+const sharedWebOptions = {
+  platform: 'browser',
+  ...sharedOptions,
+};
+
+/** @type BuildOptions */
+const sharedDesktopOptions = {
+  platform: 'node',
+  ...sharedOptions,
+};
+
+/** @type BuildOptions[] */
+const files = [
+  {
+    entryPoints: ['infoview/index.tsx'],
+    outfile: 'out/infoview/index.js',
+    format: 'iife',
+    ...sharedWebOptions,
+  },
+  {
+    entryPoints: ['infoview/styles.css'],
+    outfile: 'out/infoview/styles.css',
+    ...sharedWebOptions,
+  },
+
+  {
+    entryPoints: ['src/desktop/extension.ts'],
+    outfile: 'out/desktop/extension.js',
+    format: 'cjs',
+    ...sharedDesktopOptions,
+  },
+]
+
+Promise.all(files.map(x => esbuild.context(x))).then(async contexts => {
   if (watch) {
-    await context.watch();
+    await Promise.all(contexts.map(x => x.watch()));
   } else {
-    await context.rebuild();
-    await context.dispose();
+    await Promise.all(contexts.map(x => x.rebuild()));
+    await Promise.all(contexts.map(x => x.dispose()));
   }
-})().catch(e => {
+}).catch(e => {
   console.error(e);
   process.exit(1)
 });

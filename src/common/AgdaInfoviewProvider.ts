@@ -1,0 +1,106 @@
+import { type CancellationToken, Uri, window, type WebviewViewProvider, type WebviewView, type WebviewViewResolveContext, type ExtensionContext } from 'vscode';
+import type * as lsp from 'vscode-languageclient';
+import { BaseLanguageClient as LanguageClient } from 'vscode-languageclient';
+
+export class AgdaInfoviewProvider implements WebviewViewProvider {
+  public static readonly viewType = 'agda.infoView';
+
+  private view?: WebviewView;
+
+  constructor(private readonly context: ExtensionContext, private readonly client: LanguageClient) {
+  }
+
+  resolveWebviewView(webviewView: WebviewView, context: WebviewViewResolveContext<unknown>, token: CancellationToken): void | Thenable<void> {
+    console.log(webviewView, context, token);
+    this.view = webviewView;
+    webviewView.show();
+
+    webviewView.webview.options = {
+      // Allow scripts in the webview
+      enableScripts: true,
+    };
+
+    webviewView.webview.html = `<html>
+      <head>
+        <link rel="stylesheet" href="${webviewView.webview.asWebviewUri(Uri.joinPath(this.context.extensionUri, "out", "infoview", "styles.css"))}" />
+      </head>
+
+      <body>
+        <div id="container" style="font-size: var(--vscode-editor-font-size); font-family: var(--vscode-editor-font-family);"></div>
+      </body>
+
+      <script src="${webviewView.webview.asWebviewUri(Uri.joinPath(this.context.extensionUri, "out", "infoview", "index.js"))}"></script>
+    </html>
+    `;
+
+    this.context.subscriptions.push(
+      webviewView.webview.onDidReceiveMessage((msg) => this.handleMessage(msg), undefined, []),
+      this.client.onNotification('agda/infoview/message', (m) => this.displayMessage(m.uri, m.message))
+    );
+  }
+
+  private post(msg: any) {
+    this.view?.webview.postMessage(msg);
+  }
+
+  allGoals(uri: string) {
+    this.post({ kind: 'Navigate', route: '/goals', uri });
+  }
+
+  goal(ip: number, uri: string) {
+    this.post({
+      kind: 'Navigate',
+      route: `/goal/${ip}`,
+      uri
+    });
+  }
+
+  private async handleMessage(msg: any): Promise<void> {
+    if (!this.view) return;
+
+    if (msg.kind === 'RPCRequest') {
+      console.log('Forwarding request', msg);
+      const resp = await this.client.sendRequest('agda/query', msg.params);
+      console.log(resp);
+
+      this.view.webview.postMessage({
+        kind: 'RPCReply',
+        serial: msg.serial,
+        data: resp
+      });
+    } else if (msg.kind === 'GoToGoal') {
+      await window.showTextDocument(this.client.protocol2CodeConverter.asUri(msg.uri), {
+        selection: this.client.protocol2CodeConverter.asRange(msg.range as lsp.Range)
+      });
+    }
+  };
+
+  public refresh(uri: string) {
+    console.log("Handling webview refresh", uri, this.view);
+    this.post({
+      kind: 'Refresh',
+      route: '/goals',
+      uri
+    });
+  }
+
+  public displayMessage(uri: string, msg: string) {
+    this.post({
+      kind: 'Navigate',
+      route: '/',
+      uri
+    });
+    this.post({
+      kind: 'RunningInfo',
+      message: msg
+    })
+  }
+
+  public hide() {
+    this.post({
+      kind: 'Navigate',
+      route: '/',
+      uri: 'about:blank'
+    });
+  }
+}

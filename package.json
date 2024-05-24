@@ -16,7 +16,7 @@
   "engines": {
     "vscode": "^1.75.0"
   },
-  "main": "./out/src/extension.js",
+  "main": "./out/desktop/extension.js",
   "contributes": {
     "languages": [
       {

@@ -1,26 +1,19 @@
-/* --------------------------------------------------------------------------------------------
- * Copyright (c) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License. See License.txt in the project root for license information.
- * ------------------------------------------------------------------------------------------ */
-
 import {
-  workspace, ExtensionContext, languages,
-  DocumentSemanticTokensProvider, CancellationToken,
-  SemanticTokens, TextDocument, Event, window, EventEmitter} from 'vscode';
+  ExtensionContext, languages, DocumentSemanticTokensProvider, CancellationToken,
+  SemanticTokens, TextDocument, Event, window, EventEmitter
+} from 'vscode';
 import * as vscode from 'vscode';
 import { SemanticTokensFeature } from 'vscode-languageclient/lib/common/semanticTokens';
 
 import {
-  LanguageClient,
+  BaseLanguageClient as LanguageClient,
   LanguageClientOptions,
-  Executable,
-  TransportKind,
   SemanticTokensRefreshRequest,
   SemanticTokensRequest,
-} from 'vscode-languageclient/node';
+} from 'vscode-languageclient';
+import * as lsp from 'vscode-languageclient';
 
-import * as lsp from 'vscode-languageclient/node';
-import * as rpc from '../api/rpc';
+import * as rpc from '../../api/rpc';
 import { AgdaInfoviewProvider } from './AgdaInfoviewProvider';
 
 class LanguageClientConnection implements rpc.Connection {
@@ -93,19 +86,7 @@ const decorateGoals = ({ goals, uri }: { goals: rpc.Goal[], uri: string }) => {
   editor.setDecorations(highlight, rs);
 }
 
-export function activate(context: ExtensionContext) {
-  // If the extension is launched in debug mode then the debug server options are used
-  // Otherwise the run options are used
-  const command = workspace.getConfiguration("agda").get("executable.path", "agda");
-  const opts = workspace.getConfiguration("agda").get<string[]>("executable.options", []);
-
-  let args: string[] = [ '--lsp', ...opts ];
-
-  const serverOptions: Executable = {
-    command, args,
-    transport: TransportKind.stdio,
-  };
-
+export async function activate(context: ExtensionContext, createClient: (clientOptions: LanguageClientOptions) => Promise<LanguageClient>) {
   const agdaSelector = { scheme: 'file', language: 'agda' };
 
   // Options to control the language client
@@ -118,12 +99,7 @@ export function activate(context: ExtensionContext) {
   };
 
   // Create the language client and start the client.
-  client = new LanguageClient(
-    'agda',
-    'Agda Language Server',
-    serverOptions,
-    clientOptions
-  );
+  client = await createClient(clientOptions);
   agda = new LanguageClientConnection(client);
 
   // Start the client. This will also launch the server
@@ -164,7 +140,7 @@ export function activate(context: ExtensionContext) {
   client.onNotification('agda/infoview/refresh', (uri: string) => {
     infoview.refresh(uri);
 
-    agda.postRequest(rpc.Query.ModuleName, {uri}).then((mod) => {
+    agda.postRequest(rpc.Query.ModuleName, { uri }).then((mod) => {
       status.text = `$(check) ${mod}`
       status.show();
     });
@@ -180,12 +156,12 @@ export function activate(context: ExtensionContext) {
       status.show();
       status.text = `$(loading~spin)`
 
-      agda.postRequest(rpc.Query.ModuleName, {uri: e.document.uri.toString()}).then(async (mod) => {
+      agda.postRequest(rpc.Query.ModuleName, { uri: e.document.uri.toString() }).then(async (mod) => {
         status.text = `$(check) ${mod}`
 
         const uri = e.document.uri.toString();
         const goals = await agda.postRequest(rpc.Query.AllGoals, { types: false, uri });
-        decorateGoals({goals, uri});
+        decorateGoals({ goals, uri });
       });
     }
   });
