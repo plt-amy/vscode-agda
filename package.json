@@ -67,7 +67,7 @@
           "default": [],
           "description": "Extra command-line options to pass to the Agda executable."
         },
-        "agda.lspHighlightingLevel": {
+        "agda.lsp.highlightingLevel": {
           "scope": "resource",
           "type": "string",
           "enum": [
