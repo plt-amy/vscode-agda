@@ -43,13 +43,13 @@ const sharedDesktopOptions = {
 /** @type BuildOptions[] */
 const files = [
   {
-    entryPoints: ['infoview/index.tsx'],
+    entryPoints: ['src/infoview/index.tsx'],
     outfile: 'out/infoview/index.js',
     format: 'iife',
     ...sharedWebOptions,
   },
   {
-    entryPoints: ['infoview/styles.css'],
+    entryPoints: ['src/infoview/styles.css'],
     outfile: 'out/infoview/styles.css',
     ...sharedWebOptions,
   },

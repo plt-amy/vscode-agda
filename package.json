@@ -340,12 +340,11 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "compile": "node esbuild.mjs --production",
+    "compile": "tsc --build && node esbuild.mjs --production",
     "watch": "node esbuild.mjs --watch",
     "lint": "eslint ./src --ext .ts,.tsx"
   },
   "dependencies": {
-    "@types/react-router-dom": "^5.3.3",
     "@types/vscode-webview": "^1.57.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

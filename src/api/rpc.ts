@@ -1,5 +1,4 @@
-import * as lsp from 'vscode-languageclient/node';
-// import { TextEditor } from 'vscode';
+import type * as lsp from 'vscode-languageclient';
 
 export type Fragment = { style: string[], children: Fragment[] } | string
 export type Doc = Fragment[]
@@ -7,7 +6,7 @@ export type Doc = Fragment[]
 export type Goal = {
   goalId:    number,
   goalType:  Doc,
-  goalRange: lsp.Range
+  goalRange: lsp.Range,
 }
 
 export type LocalFlag =
@@ -22,7 +21,7 @@ export type Local = {
   localValue:       Doc | null,
   localFlags:       LocalFlag[] | null,
   localHiding:      Hiding,
-  localModality:    Modality
+  localModality:    Modality,
 }
 
 export type Modality = {
@@ -36,7 +35,7 @@ export type Context = Local[]
 export type GoalInfo = {
   goalGoal:     Goal,
   goalContext:  Context,
-  goalBoundary: Doc[] | null
+  goalBoundary: Doc[] | null,
 };
 
 export type Relevance = "Relevant"  | "NonStrict"  | "Irrelevant";

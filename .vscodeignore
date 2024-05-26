@@ -1,14 +1,14 @@
-.vscode/**
-**/*.ts
-**/*.map
+# Configuration
+.editorconfig
+.eslintignore
+.eslintrc.js
 .gitignore
-**/tsconfig.json
-**/tsconfig.base.json
-contributing.md
-client/node_modules/**
-!client/node_modules/vscode-jsonrpc/**
-!client/node_modules/vscode-languageclient/**
-!client/node_modules/vscode-languageserver-protocol/**
-!client/node_modules/vscode-languageserver-types/**
-!client/node_modules/{minimatch,brace-expansion,concat-map,balanced-match}/**
-!client/node_modules/{semver,lru-cache,yallist}/**
+.vscode/**
+tsconfig.json
+esbuild.mjs
+
+# Source code
+src/**
+
+# Build output
+out/ts/*

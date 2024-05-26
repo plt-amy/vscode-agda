@@ -1,0 +1,13 @@
+{
+  "extends": ["../tsconfig.base.json"],
+  "compilerOptions": {
+    "types": ["vscode-webview"],
+    "lib": ["es2020", "DOM"],
+    "jsx": "react-jsx",
+    "outDir": "../../out/ts/infoview",
+  },
+  "include": ["./"],
+  "references": [
+    {"path": "../api/tsconfig.json"},
+  ],
+}

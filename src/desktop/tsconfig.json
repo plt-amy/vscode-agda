@@ -1,0 +1,11 @@
+{
+  "extends": ["../tsconfig.base.json"],
+  "compilerOptions": {
+    "types": ["vscode", "node"],
+    "outDir": "../../out/ts/desktop",
+  },
+  "include": ["./"],
+  "references": [
+    {"path": "../common/tsconfig.json"},
+  ],
+}

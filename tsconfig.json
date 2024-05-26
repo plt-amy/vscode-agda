@@ -1,23 +1,13 @@
 {
   "compilerOptions": {
-    "module": "commonjs",
-    "target": "es2020",
-    "lib": ["es2020"],
-
-    "newLine": "LF",
-    "outDir": "out",
-    "sourceMap": true,
-
-    // Strict Type-Checking Options
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true,
-    "isolatedModules": true,
-    "forceConsistentCasingInFileNames": true,
+    "composite": true,
+    "noEmit": true,
   },
-
-  "include": ["src", "api/rpc.ts"],
-  "exclude": ["node_modules"]
+  "include": [],
+  "references": [
+    { "path": "src/api/tsconfig.json" },
+    { "path": "src/common/tsconfig.json" },
+    { "path": "src/desktop/tsconfig.json" },
+    { "path": "src/infoview/tsconfig.json" },
+  ]
 }

@@ -13,7 +13,7 @@ import {
 } from 'vscode-languageclient';
 import * as lsp from 'vscode-languageclient';
 
-import * as rpc from '../../api/rpc';
+import * as rpc from '../api/rpc';
 import { AgdaInfoviewProvider } from './AgdaInfoviewProvider';
 
 class LanguageClientConnection implements rpc.Connection {

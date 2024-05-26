@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "module": "Node16",
+    "target": "es2020",
+    "lib": ["es2020"],
+    "types": [],
+
+    "newLine": "LF",
+    "emitDeclarationOnly": true,
+    "sourceMap": true,
+
+    // Strict Type-Checking Options
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "isolatedModules": true,
+    "forceConsistentCasingInFileNames": true,
+  },
+}
