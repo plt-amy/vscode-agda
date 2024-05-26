@@ -6,9 +6,10 @@ import { MemoryRouter, Route, Routes, useNavigate, useParams } from "react-route
 import * as rpc from "../api/rpc";
 
 const vscode = acquireVsCodeApi();
+const postMessage = (msg: rpc.FromInfoviewMessage): void => vscode.postMessage(msg);
 
 class OpenDocument {
-  constructor (public readonly version: number, public readonly uri?: string) {}
+  constructor(public readonly version: number, public readonly uri?: string) { }
 
   bump(): OpenDocument {
     return new OpenDocument(this.version + 1, this.uri);
@@ -24,46 +25,46 @@ class OpenDocument {
 const DocumentContext: React.Context<OpenDocument> = React.createContext(OpenDocument.empty);
 
 class MessageConnection implements rpc.Connection {
-  private readonly pending: Map<number, any> = new Map();
+  private readonly pending: Map<number, (data: unknown) => void> = new Map();
   private next: number = 0;
 
   constructor() {
-    window.addEventListener('message', (ev) => {
-      console.log('XXX', ev);
-      if (ev.data.kind === 'RPCReply' && this.pending.get(ev.data.serial)) {
-        this.pending.get(ev.data.serial)(ev.data.data)
-        this.pending.set(ev.data.serial, null)
+    window.addEventListener("message", ev => {
+      console.log("XXX", ev);
+
+      const msg = ev.data as rpc.ToInfoviewMessage;
+      if (msg.kind === "RPCReply" && this.pending.get(msg.serial)) {
+        this.pending.get(msg.serial)?.(msg.data);
+        this.pending.delete(msg.serial);
       }
-    })
+    });
   }
 
-  postRequest<P extends {}, R>(query: rpc.Query<P, R>, params: P & { uri: string }): Promise<R> {
+  postRequest<P, R>(query: rpc.Query<P, R>, params: P & { uri: string }): Promise<R> {
     return new Promise((resolve, _reject) => {
-      console.log('posting');
+      console.log("posting");
 
       const id = this.next++;
-      this.pending.set(id, resolve)
+      this.pending.set(id, resolve as (data: unknown) => void);
 
-      vscode.postMessage({
-        kind:  'RPCRequest',
+      postMessage({
+        kind: "RPCRequest",
         serial: id,
-        params: Object.assign({}, params, {
-          kind: query.kind,
-        })
+        params: { ...params, kind: query.kind },
       });
-    })
+    });
   }
 }
 
-function useQuery<P extends {}, R>(query: rpc.Query<P, R>, param: P, deps: React.DependencyList = []) {
+function useQuery<P, R>(query: rpc.Query<P, R>, param: P, deps: React.DependencyList = []) {
   const [out, setOut] = React.useState<R>();
   const doc = React.useContext(DocumentContext);
-  console.log('XXX', doc);
+  console.log("XXX", doc);
 
   React.useEffect(() => {
-    if (!doc.uri || doc.uri === 'about:blank') return;
+    if (!doc.uri || doc.uri === "about:blank") return;
 
-    agda.postRequest(query, Object.assign({}, param, { uri: doc.uri })).then((value) => setOut(value))
+    void agda.postRequest(query, { ...param, uri: doc.uri }).then(value => setOut(value));
   }, [...deps, doc.uri, doc.version]);
 
   return out;
@@ -71,48 +72,50 @@ function useQuery<P extends {}, R>(query: rpc.Query<P, R>, param: P, deps: React
 
 const agda = new MessageConnection();
 
-const EventNavigation: React.FC<{children?: React.ReactNode}> = ({ children }) => {
+const EventNavigation: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
   const nav = useNavigate();
   const [doc, setDocument] = React.useState<OpenDocument>(OpenDocument.empty);
 
   React.useEffect(() => {
-    window.addEventListener('message', (ev) => {
+    window.addEventListener("message", ev => {
+      const msg = ev.data as rpc.ToInfoviewMessage;
+
       let upd = doc ?? OpenDocument.empty, changed = false;
-      if (typeof ev.data.uri === 'string' && ev.data.uri !== '') upd = upd.withURI(ev.data.uri), changed = true;
-      if (ev.data.kind === 'Refresh') upd = upd.bump(), changed = true;
-
-      if (changed) setDocument(upd)
-
-      if (typeof ev.data.route === 'string') nav(ev.data.route);
-    })
+      if(msg.kind === "Navigate" || msg.kind === "Refresh") {
+        if (msg.uri !== "") upd = upd.withURI(msg.uri), changed = true;
+        if (msg.kind === "Refresh") upd = upd.bump(), changed = true;
+        if (changed) setDocument(upd);
+        nav(msg.route);
+      }
+    });
   }, []);
 
   return <DocumentContext.Provider value={doc}>
     {children}
   </DocumentContext.Provider>;
-}
+};
 
 const docClasses = ({ style }: { style: string[] }) => ["agda", ...style].join(" ");
 
 const Collapsible: React.FC<{ children: React.ReactNode, className: string }> = ({ children, className }) => {
   const [open, setOpen] = React.useState(true);
-  return <span className={className + (open ? " " : " collapsed")} onClick={(e) => { e.stopPropagation(); setOpen(!open) }}>
+  return <span className={className + (open ? " " : " collapsed")} onClick={e => { e.stopPropagation(); setOpen(!open); }}>
     <span className="children">
       {children}
     </span>
   </span>;
-}
+};
 
 const renderDoc = (doc: rpc.Doc) => <>
   {doc.map(e => {
-    if (typeof e === 'string') {
-      return <>{e}</>
-    } else if (e.style.find(x => x === 'subtree')) {
-      return <Collapsible className={docClasses(e)}>{renderDoc(e.children)}</Collapsible>
+    if (typeof e === "string") {
+      return <>{e}</>;
+    } else if (e.style.find(x => x === "subtree")) {
+      return <Collapsible className={docClasses(e)}>{renderDoc(e.children)}</Collapsible>;
     } else {
       return <span className={docClasses(e)}>
         {renderDoc(e.children)}
-      </span>
+      </span>;
     }
   })}
 </>;
@@ -121,22 +124,22 @@ const renderDoc = (doc: rpc.Doc) => <>
 const Doc: React.FC<{ it: rpc.Doc }> = ({ it }) => {
   return <span className="agda-container">
     {renderDoc(it)}
-  </span>
-}
+  </span>;
+};
 
 const GoalType: React.FC<{ goal: rpc.Goal }> = ({ goal }) => {
-  const {uri} = React.useContext(DocumentContext);
+  const { uri } = React.useContext(DocumentContext);
 
-  const goto = () => vscode.postMessage({
-    kind: 'GoToGoal',
-    uri,
+  const goto = () => postMessage({
+    kind: "GoToGoal",
+    uri: uri!,
     range: goal.goalRange
   });
 
-  return <span style={{display: 'flex', alignItems: 'flex-start', gap: '1ex'}}>
+  return <span style={{ display: "flex", alignItems: "flex-start", gap: "1ex" }}>
     <a onClick={goto}>{`?${goal.goalId}`}</a> : <Doc it={goal.goalType} />
   </span>;
-}
+};
 
 const AllGoals = () => {
   const goals = useQuery(rpc.Query.AllGoals, { types: true });
@@ -144,23 +147,23 @@ const AllGoals = () => {
   if (goals && goals.length >= 1) {
     return <div>
       <Section title="Goals">
-        <ul className="entry-list" style={{gap: '1em'}}>
-          {...(goals ?? []).map((g) => <GoalType goal={g} />)}
+        <ul className="entry-list" style={{ gap: "1em" }}>
+          {...(goals ?? []).map(g => <GoalType goal={g} />)}
         </ul>
       </Section>
-    </div>
+    </div>;
   } else if (goals) {
     return <div>
       <Section title="Goals">
         <span className="agda">All done 🎉</span>
       </Section>
-    </div>
+    </div>;
   } else {
     return <div>
       <Section title="Goals">
         <span className="agda">Loading...</span>
       </Section>
-    </div>
+    </div>;
   }
 };
 
@@ -169,18 +172,18 @@ const Section: React.FC<{ title: string, children: React.ReactNode, open?: boole
     <details className="section block" open={(open === undefined) ? true : open}>
       <summary className="section-header">{title.toLowerCase()}</summary>
       {children}
-    </details>
+    </details>;
 
 const Entry: React.FC<{ entry: rpc.Local }> = ({ entry }) => {
 
   const mkFlag = (f: rpc.LocalFlag, index: number) => {
     switch (f.tag) {
-      case 'NotInScope':   return (index === 0) ? 'Not in scope' : 'not in scope';
-      case 'Inaccessible': return (index === 0) ? f.contents : f.contents.toLowerCase();
-      case 'Erased':       return (index === 0) ? 'Erased' : 'erased';
-      case 'Instance':     return (index === 0) ? 'Instance' : 'instance';
+      case "NotInScope": return (index === 0) ? "Not in scope" : "not in scope";
+      case "Inaccessible": return (index === 0) ? f.contents : f.contents.toLowerCase();
+      case "Erased": return (index === 0) ? "Erased" : "erased";
+      case "Instance": return (index === 0) ? "Instance" : "instance";
     }
-  }
+  };
 
   return <li className={`${!entry.localFlags || "out-of-scope"}`}>
     <div className="lines">
@@ -195,45 +198,46 @@ const Entry: React.FC<{ entry: rpc.Local }> = ({ entry }) => {
 
       {entry.localValue && <Doc it={entry.localValue} />}
     </div>
-  </li>
-}
+  </li>;
+};
 
 const Boundary: React.FC<{ boundary: rpc.Doc[] }> = ({ boundary }) =>
   <Section title="Boundary">
     <ul className="entry-list">
-      {...boundary.map((face) => <li>
+      {...boundary.map(face => <li>
         <Doc it={face} />
       </li>)}
     </ul>
-  </Section>
+  </Section>;
 
 const RunningInfo = () => {
-  const doc = React.useContext(DocumentContext)
-  const [messages, setMessages] = React.useState<string[]>([])
+  const doc = React.useContext(DocumentContext);
+  const [messages, setMessages] = React.useState<string[]>([]);
 
-  if (!doc.uri || doc.uri === 'about:blank') return <></>;
+  if (!doc.uri || doc.uri === "about:blank") return <></>;
 
-  window.addEventListener('message', (ev) => {
-    if (ev.data.kind === 'RunningInfo') {
-      setMessages([...messages, ev.data.message])
+  window.addEventListener("message", ev => {
+    const msg = ev.data as rpc.ToInfoviewMessage;
+    if (msg.kind === "RunningInfo") {
+      setMessages([...messages, msg.message]);
     }
-  })
+  });
 
   return <Section title="Loading">
     <div className="running-info">
-      {...messages.map((s) => <span>{s}</span>)}
+      {...messages.map(s => <span>{s}</span>)}
     </div>
-  </Section>
-}
+  </Section>;
+};
 
 const Goal = () => {
   const { id: ids } = useParams<{ id: string }>();
-  const id = Number.parseInt(ids ?? '');
-  if (typeof id !== 'number') return;
+  const id = Number.parseInt(ids ?? "");
+  if (typeof id !== "number") return;
 
-  const goal = useQuery(rpc.Query.GoalInfo, { goal: id }, [id])
-  console.log('YYY', goal);
-  let context = goal?.goalContext ?? [];
+  const goal = useQuery(rpc.Query.GoalInfo, { goal: id }, [id]);
+  console.log("YYY", goal);
+  const context = goal?.goalContext ?? [];
 
   return goal && <div className="sections">
     <Section title="Goal">
@@ -249,14 +253,14 @@ const Goal = () => {
     </Section>}
 
   </div>;
-}
+};
 
 function Document() {
   return <MemoryRouter>
     <EventNavigation>
       <Routes>
-        <Route path="/"         element={<RunningInfo />} />
-        <Route path="/goals"    element={<AllGoals />} />
+        <Route path="/" element={<RunningInfo />} />
+        <Route path="/goals" element={<AllGoals />} />
         <Route path="/goal/:id" element={<Goal />} />
       </Routes>
     </EventNavigation>

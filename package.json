@@ -341,7 +341,7 @@
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc --build && node esbuild.mjs --production",
-    "watch": "node esbuild.mjs --watch",
+    "watch": "tsc --build && node esbuild.mjs --watch",
     "lint": "eslint ./src --ext .ts,.tsx"
   },
   "dependencies": {
