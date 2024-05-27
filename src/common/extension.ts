@@ -25,6 +25,19 @@ class LanguageClientConnection implements rpc.Connection {
   }
 }
 
+/**
+ * The text documents that the Agda extension will run on.
+ */
+const agdaSelector: lsp.DocumentSelector = [
+  { scheme: "file", language: "agda" },
+  // By matching lagda.md files, rather than defining a new language, we allow
+  // other Markdown extensions to work with literate files.
+  { scheme: "file", pattern: "**/*.lagda.md" }
+];
+
+/** Determine if this document is an Agda file. */
+const isAgdaDocument = (d: vscode.TextDocument): boolean => vscode.languages.match(agdaSelector, d) > 0;
+
 export let client: LanguageClient;
 export let agda: rpc.Connection;
 
@@ -39,12 +52,10 @@ class AgdaTokenProvider implements DocumentSemanticTokensProvider {
   }
 
   async provideDocumentSemanticTokens(document: TextDocument, _token: CancellationToken): Promise<SemanticTokens> {
-    console.log(`Asking for tokens for ${document.uri.path}`);
     const tokens = await this.client.sendRequest(SemanticTokensRequest.type, {
       textDocument: client.code2ProtocolConverter.asTextDocumentIdentifier(document)
     });
 
-    console.log("Got tokens:", tokens);
     const toks = await client.protocol2CodeConverter.asSemanticTokens(tokens);
     return toks!;
   }
@@ -86,12 +97,9 @@ const decorateGoals = ({ goals, uri }: { goals: rpc.Goal[], uri: string }) => {
 };
 
 export async function activate(context: ExtensionContext, createClient: (clientOptions: LanguageClientOptions) => LanguageClient | Promise<LanguageClient>) {
-  const agdaSelector = { scheme: "file", language: "agda" };
-
   // Options to control the language client
   const clientOptions: LanguageClientOptions = {
-    // Register the server for plain text documents
-    documentSelector: [agdaSelector],
+    documentSelector: agdaSelector,
     synchronize: {
       configurationSection: "agda",
     }
@@ -116,8 +124,7 @@ export async function activate(context: ExtensionContext, createClient: (clientO
   context.subscriptions.push(window.registerWebviewViewProvider(AgdaInfoviewProvider.viewType, infoview));
 
   window.onDidChangeTextEditorSelection(e => {
-    if (e.textEditor.document.uri.scheme !== "file" || e.textEditor.document.languageId !== "agda")
-    {return;}
+    if (!isAgdaDocument(e.textEditor.document)) return;
 
     if (e.selections.length === 1) {
       void agda.postRequest(rpc.Query.GoalAt, {
@@ -148,7 +155,7 @@ export async function activate(context: ExtensionContext, createClient: (clientO
   client.onNotification(AgdaGoals, resp => decorateGoals(resp));
 
   window.onDidChangeActiveTextEditor(e => {
-    if (!e || e.document.uri.scheme !== "file" || e.document.languageId !== "agda") {
+    if (!e || !isAgdaDocument(e.document)) {
       status.hide();
       infoview.hide();
     } else {
@@ -165,9 +172,13 @@ export async function activate(context: ExtensionContext, createClient: (clientO
     }
   });
 
+  /** Return true if {@code p1} is after {@code p2}. */
+  const isAfter = (p1: lsp.Position, p2: lsp.Position) =>
+    (p1.line > p2.line) || (p1.line == p2.line && p1.character > p2.character);
+
   context.subscriptions.push(vscode.commands.registerCommand("agda.nextGoal", async () => {
     const e = window.activeTextEditor;
-    if (!e || e.document.uri.scheme !== "file" || e.selections.length > 1) return;
+    if (!e || !isAgdaDocument(e.document) || e.selections.length > 1) return;
 
     const sel = e.selection;
 
@@ -177,13 +188,9 @@ export async function activate(context: ExtensionContext, createClient: (clientO
     });
     if (goals.length < 1) return;
 
-    const compare = (p1: lsp.Position, p2: lsp.Position) =>
-      (p1.line >= p2.line) || (p1.line == p2.line && p1.character >= p2.character);
-
+    // Find the first goal whose start is after the current position.
     let next = goals.find(({ goalRange: { start, end } }) =>
-      compare(start, sel.active) && !compare(sel.active, end));
-
-    if (!next) next = goals[0];
+      isAfter(start, sel.active) && !isAfter(sel.active, end)) ?? goals[0];
 
     e.revealRange(client.protocol2CodeConverter.asRange(next.goalRange));
     e.selection = new vscode.Selection(
@@ -192,7 +199,7 @@ export async function activate(context: ExtensionContext, createClient: (clientO
     );
   }), vscode.commands.registerCommand("agda.prevGoal", async () => {
     const e = window.activeTextEditor;
-    if (!e || e.document.uri.scheme !== "file" || e.selections.length > 1) return;
+    if (!e || !isAgdaDocument(e.document) || e.selections.length > 1) return;
 
     const sel = e.selection;
 
@@ -201,14 +208,10 @@ export async function activate(context: ExtensionContext, createClient: (clientO
       uri: e.document.uri.toString()
     });
     if (goals.length < 1) return;
-    console.log("Going backwards", goals);
 
-    const compare = (p1: lsp.Position, p2: lsp.Position) =>
-      (p1.line >= p2.line) || (p1.line == p2.line && p1.character >= p2.character);
-
-    let prev = goals.reverse().find(({ goalRange: { end } }) => compare(end, sel.active));
-
-    if (!prev) prev = goals[0];
+    // Find the last goal whose end is before the current position.
+    goals.reverse();
+    let prev = goals.find(({ goalRange: { end } }) => isAfter(sel.active, end)) ?? goals[0];
 
     e.revealRange(client.protocol2CodeConverter.asRange(prev.goalRange));
     e.selection = new vscode.Selection(

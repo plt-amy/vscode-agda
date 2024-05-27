@@ -1,0 +1,24 @@
+{
+  "fileTypes": [],
+  "injectionSelector": "L:markup.fenced_code.block.markdown",
+  "patterns": [
+    {
+      "include": "#agda-code-block"
+    }
+  ],
+  "repository": {
+    "agda-code-block": {
+        "begin": "\\bagda\\b(\\s+[^`~]*)?$",
+        "end": "(^|\\G)(?=\\s*[`~]{3,}\\s*$)",
+        "patterns": [
+          {
+            "begin": "(^|\\G)(\\s*)(.*)",
+            "while": "(^|\\G)(?!\\s*([`~]{3,})\\s*$)",
+            "contentName": "meta.embedded.block.agda",
+            "patterns": [{"include": "source.agda"}]
+          }
+        ]
+    }
+  },
+  "scopeName": "markdown.agda.codeblock"
+}

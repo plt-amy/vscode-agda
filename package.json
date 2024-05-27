@@ -1,6 +1,7 @@
 {
   "name": "agda",
-  "description": "A language server example",
+  "displayName": "Agda",
+  "description": "Support for the Agda programming language, with support for Agda's language server.",
   "author": "Microsoft Corporation",
   "license": "MIT",
   "version": "1.0.0",
@@ -8,7 +9,7 @@
     "type": "git",
     "url": "https://github.com/Microsoft/vscode-extension-samples"
   },
-  "publisher": "vscode-samples",
+  "publisher": "plt-amy",
   "categories": [],
   "keywords": [
     "multi-root ready"
@@ -26,8 +27,7 @@
           "agda"
         ],
         "extensions": [
-          ".agda",
-          ".lagda.md"
+          ".agda"
         ],
         "configuration": "./language-configuration.json"
       }
@@ -304,18 +304,38 @@
         "title": "Agda: Select previous interaction point"
       }
     ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "agda.nextGoal",
+          "when": "editorLangId == agda || resourceFilename =~ /\\.lagda\\.md$/"
+        },
+        {
+          "command": "agda.prevGoal",
+          "when": "editorLangId == agda || resourceFilename =~ /\\.lagda\\.md$/"
+        }
+      ]
+    },
     "grammars": [
       {
         "language": "agda",
         "scopeName": "source.agda",
         "path": "./syntaxes/agda.tmLanguage.json"
+      },
+      {
+        "scopeName": "markdown.agda.codeblock",
+        "path": "./syntaxes/agda-markdown-codeblock.tmLanguage.json",
+        "injectTo": ["text.html.markdown"],
+        "embeddedLanguages": {
+          "meta.embedded.block.agda": "agda"
+        }
       }
     ],
     "keybindings": [
       {
         "key": "ctrl+c ctrl+a",
         "command": "editor.action.codeAction",
-        "when": "editorLangId == agda",
+        "when": "editorLangId == agda || resourceFilename =~ /\\.lagda\\.md$/",
         "args": {
           "kind": "agda.auto"
         }
@@ -323,7 +343,7 @@
       {
         "key": "ctrl+c ctrl+r",
         "command": "editor.action.codeAction",
-        "when": "editorLangId == agda",
+        "when": "editorLangId == agda || resourceFilename =~ /\\.lagda\\.md$/",
         "args": {
           "kind": "agda.refine"
         }
@@ -331,7 +351,7 @@
       {
         "key": "ctrl+c ctrl+space",
         "command": "editor.action.codeAction",
-        "when": "editorLangId == agda",
+        "when": "editorLangId == agda || resourceFilename =~ /\\.lagda\\.md$/",
         "args": {
           "kind": "agda.give"
         }

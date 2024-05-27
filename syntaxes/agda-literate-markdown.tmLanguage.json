@@ -1,0 +1,7 @@
+{
+  "scopeName": "text.html.markdown.lagda",
+  "fileTypes": ["lagda.md"],
+  "patterns": [
+    {"include": "text.html.markdown"}
+  ]
+}
