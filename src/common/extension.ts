@@ -16,6 +16,9 @@ import * as lsp from "vscode-languageclient";
 import * as rpc from "../api/rpc";
 import { AgdaInfoviewProvider } from "./AgdaInfoviewProvider";
 import { AgdaGoals, AgdaHighlightingInit, AgdaInfoviewRefresh, AgdaQuery } from "../api/methods";
+import { isAgdaDocument, agdaSelector } from './utils';
+
+import registerServerStatus from './client/serverStatus';
 
 class LanguageClientConnection implements rpc.Connection {
   constructor(private readonly client: LanguageClient) { }
@@ -24,20 +27,6 @@ class LanguageClientConnection implements rpc.Connection {
     return this.client.sendRequest(AgdaQuery, { ...params, kind: query.kind }) as Promise<R>;
   }
 }
-
-/**
- * The text documents that the Agda extension will run on.
- */
-const agdaSelector: lsp.DocumentSelector = [
-  { scheme: "file", language: "agda" },
-  // By matching lagda.md files, rather than defining a new language, we allow
-  // other Markdown extensions to work with literate files.
-  { scheme: "file", pattern: "**/*.lagda.md" }
-];
-
-/** Determine if this document is an Agda file. */
-const isAgdaDocument = (d: vscode.TextDocument): boolean => vscode.languages.match(agdaSelector, d) > 0;
-
 export let client: LanguageClient;
 export let agda: rpc.Connection;
 
@@ -109,8 +98,7 @@ export async function activate(context: ExtensionContext, createClient: (clientO
   client = await createClient(clientOptions);
   agda = new LanguageClientConnection(client);
 
-  // Start the client. This will also launch the server
-  await client.start();
+  registerServerStatus(context, client);
 
   SemanticTokensFeature.prototype.register = function () { };
   client.onNotification(AgdaHighlightingInit, ({ legend }) => {
@@ -219,6 +207,9 @@ export async function activate(context: ExtensionContext, createClient: (clientO
       client.protocol2CodeConverter.asPosition(prev.goalRange.end),
     );
   }));
+
+  // Start the client. This will also launch the server
+  await client.start();
 }
 
 export function deactivate(): Thenable<void> | undefined {

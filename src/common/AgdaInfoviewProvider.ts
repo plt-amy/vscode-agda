@@ -2,6 +2,7 @@ import { type CancellationToken, type ExtensionContext, Uri, type WebviewView, t
 import { BaseLanguageClient as LanguageClient } from "vscode-languageclient";
 import { FromInfoviewMessage, ToInfoviewMessage } from "../api/rpc";
 import { AgdaInfoviewMessage } from "../api/methods";
+import { assertNever } from './utils';
 
 export class AgdaInfoviewProvider implements WebviewViewProvider {
   public static readonly viewType = "agda.infoView";
@@ -73,6 +74,8 @@ export class AgdaInfoviewProvider implements WebviewViewProvider {
       await window.showTextDocument(this.client.protocol2CodeConverter.asUri(msg.uri), {
         selection: this.client.protocol2CodeConverter.asRange(msg.range)
       });
+    } else {
+      assertNever(msg);
     }
   }
 

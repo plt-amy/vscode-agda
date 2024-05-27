@@ -25,5 +25,5 @@ export type AgdaGoalsParams = { goals: Goal[], uri: string };
 export const AgdaGoals: ProtocolNotificationType<AgdaGoalsParams, void> = new ProtocolNotificationType("agda/goals");
 
 /** Provide a custom semantic highlighting legend. */
-export const AgdaHighlightingInit: ProtocolNotificationType<{ legend: SemanticTokensLegend }, void> = new ProtocolNotificationType("agda/highlighting/init");
+export const AgdaHighlightingInit: ProtocolNotificationType<{ legend: SemanticTokensLegend }, void> = new ProtocolNotificationType("agda/highlightingInit");
 
