@@ -18,6 +18,9 @@
     "vscode": "^1.75.0"
   },
   "main": "./out/desktop/extension.js",
+  "extensionKind": [
+    "workspace"
+  ],
   "contributes": {
     "languages": [
       {
@@ -36,7 +39,7 @@
       "panel": [
         {
           "id": "agda-infoview",
-          "icon": "asdf.svg",
+          "icon": "logo.svg",
           "title": "Agda"
         }
       ]
@@ -66,6 +69,12 @@
           "type": "array",
           "default": [],
           "description": "Extra command-line options to pass to the Agda executable."
+        },
+        "agda.lsp.reloadOnSave": {
+          "scope": "resource",
+          "type": "boolean",
+          "default": true,
+          "description": "Reload the file on every save."
         },
         "agda.lsp.highlightingLevel": {
           "scope": "resource",
@@ -297,11 +306,23 @@
     "commands": [
       {
         "command": "agda.nextGoal",
-        "title": "Agda: Select next interaction point"
+        "title": "Next interaction point",
+        "category": "Agda"
       },
       {
         "command": "agda.prevGoal",
-        "title": "Agda: Select previous interaction point"
+        "title": "Previous interaction point",
+        "category": "Agda"
+      },
+      {
+        "command": "agda.restart",
+        "title": "Restart",
+        "category": "Agda"
+      },
+      {
+        "command": "agda.reload",
+        "title": "Reload",
+        "category": "Agda"
       }
     ],
     "menus": {
@@ -354,6 +375,14 @@
         "when": "(editorLangId == agda || resourceFilename =~ /\\.lagda\\.md$/) && !editorHasSelection && editorTextFocus",
         "args": {
           "kind": "agda.give"
+        }
+      },
+      {
+        "key": "ctrl+c ctrl+space",
+        "command": "editor.action.codeAction",
+        "when": "(editorLangId == agda || resourceFilename =~ /\\.lagda\\.md$/) && !editorHasSelection && editorTextFocus",
+        "args": {
+          "kind": "agda.case"
         }
       }
     ]

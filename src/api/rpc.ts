@@ -33,9 +33,10 @@ export type Modality = {
 export type Context = Local[]
 
 export type GoalInfo = {
-  goalGoal:     Goal,
-  goalContext:  Context,
-  goalBoundary: Doc[] | null,
+  goalGoal:        Goal,
+  goalContext:     Context,
+  goalBoundary:    Doc[] | null,
+  goalConstraints: Doc[],
 };
 
 export type Relevance = "Relevant"  | "NonStrict"  | "Irrelevant";

@@ -137,7 +137,7 @@ const GoalType: React.FC<{ goal: rpc.Goal }> = ({ goal }) => {
   });
 
   return <span style={{ display: "flex", alignItems: "flex-start", gap: "1ex" }}>
-    <a onClick={goto}>{`?${goal.goalId}`}</a> : <Doc it={goal.goalType} />
+    <a onClick={goto} style={{whiteSpace: "pre"}}>{`?${goal.goalId}`}</a> : <Doc it={goal.goalType} />
   </span>;
 };
 
@@ -238,6 +238,7 @@ const Goal = () => {
   const goal = useQuery(rpc.Query.GoalInfo, { goal: id }, [id]);
   console.log("YYY", goal);
   const context = goal?.goalContext ?? [];
+  const constraints = goal?.goalConstraints ?? [];
 
   return goal && <div className="sections">
     <Section title="Goal">
@@ -249,6 +250,12 @@ const Goal = () => {
     {context.length >= 1 && <Section title="Context">
       <ul className="entry-list">
         {...context.map((e: rpc.Local) => <Entry entry={e} />)}
+      </ul>
+    </Section>}
+
+    {constraints.length >= 1 && <Section title="Constraints">
+      <ul className="entry-list">
+        {...constraints.map((e: rpc.Doc) => <Doc it={e} />)}
       </ul>
     </Section>}
 

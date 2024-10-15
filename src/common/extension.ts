@@ -6,12 +6,12 @@ import * as vscode from "vscode";
 import { SemanticTokensFeature } from "vscode-languageclient/lib/common/semanticTokens";
 
 import {
-  BaseLanguageClient as LanguageClient,
   LanguageClientOptions,
   SemanticTokensRefreshRequest,
   SemanticTokensRequest,
 } from "vscode-languageclient";
 import * as lsp from "vscode-languageclient";
+import { AbstractLanguageClient as LanguageClient } from "./client";
 
 import * as rpc from "../api/rpc";
 import { AgdaInfoviewProvider } from "./AgdaInfoviewProvider";
@@ -28,9 +28,65 @@ class LanguageClientConnection implements rpc.Connection {
   postRequest<P, R>(query: rpc.Query<P, R>, params: P & { uri: string }): Promise<R> {
     return this.client.sendRequest(AgdaQuery, { ...params, kind: query.kind }) as Promise<R>;
   }
+
+  private compare(p1: lsp.Position, p2: lsp.Position) {
+    return (p1.line >= p2.line) || (p1.line == p2.line && p1.character >= p2.character);
+  }
+
+  private contains(r: lsp.Range, p: lsp.Position) {
+    return this.compare(r.start, p) && this.compare(p, r.end);
+  }
+
+  public async selectGoal(kind: 'next' | 'prev') {
+    const e = window.activeTextEditor;
+    if (!e || e.document.uri.scheme !== 'file' || e.selections.length != 1) return;
+    if (!e.selection.start.isEqual(e.selection.end)) return;
+
+    const cursor = e.selection.start;
+
+    const goals = await agda.postRequest(rpc.Query.AllGoals, {
+      types: false,
+      uri: e.document.uri.toString()
+    });
+
+    if (goals.length < 1) return;
+
+    let goal: rpc.Goal | undefined;
+
+    if (kind === 'next') {
+      // Seek from the start and find the first goal that (a) doesn't
+      // contain the cursor and (b) starts after the end of the
+      // selection
+      goal = goals.find(({ goalRange }) =>
+        !this.contains(goalRange, cursor) && this.compare(goalRange.start, cursor));
+
+      // If we didn't find any then wrap around to the end
+      if (!goal) goal = goals[0];
+    } else {
+      goals.reverse();
+
+      // Seek from the end and find the last goal that (a) doesn't
+      // contain the cursor and (b) ends after the start of the
+      // selection
+      goal = goals.find(({ goalRange }) =>
+        !this.contains(goalRange, cursor) && this.compare(cursor, goalRange.end));
+
+      // If we didn't find any then wrap around to the end
+      if (!goal) goal = goals[0];
+    }
+
+    // If we didn't find any then either there are no goals or they're all contained in the selection
+    if (!goal) return;
+
+    e.revealRange(client.protocol2CodeConverter.asRange(goal.goalRange))
+    e.selection = new vscode.Selection(
+      client.protocol2CodeConverter.asPosition(goal.goalRange.start),
+      client.protocol2CodeConverter.asPosition(goal.goalRange.end),
+    );
+  }
 }
 export let client: LanguageClient;
-export let agda: rpc.Connection;
+export let agda: LanguageClientConnection;
 
 class AgdaTokenProvider implements DocumentSemanticTokensProvider {
   private readonly emitter: EventEmitter<void> = new EventEmitter();
@@ -73,11 +129,12 @@ const decorateGoals = ({ goals, uri }: { goals: rpc.Goal[], uri: string }) => {
 
   goals.forEach(({ goalId, goalRange }) => {
     const r = client.protocol2CodeConverter.asRange(goalRange);
-    rs.push(new vscode.Range(r.start, r.end.translate(0, goalId.toString().length)));
+    rs.push(r);
     const dec = window.createTextEditorDecorationType({
       after: {
         contentText: goalId.toString(),
-        color: new vscode.ThemeColor("charts.yellow")
+        color: new vscode.ThemeColor("charts.yellow"),
+        backgroundColor: new vscode.ThemeColor('editor.selectionHighlightBackground')
       }
     });
     decorations.push(dec);
@@ -169,52 +226,28 @@ export async function activate(context: ExtensionContext, createClient: (clientO
     }
   });
 
-  /** Return true if {@code p1} is after {@code p2}. */
-  const isAfter = (p1: lsp.Position, p2: lsp.Position) =>
-    (p1.line > p2.line) || (p1.line == p2.line && p1.character > p2.character);
+  context.subscriptions.push(
+    vscode.commands.registerCommand('agda.nextGoal', () => agda.selectGoal('next')),
+    vscode.commands.registerCommand('agda.prevGoal', () => agda.selectGoal('prev'))
+  );
 
-  context.subscriptions.push(vscode.commands.registerCommand("agda.nextGoal", async () => {
-    const e = window.activeTextEditor;
-    if (!e || !isAgdaDocument(e.document) || e.selections.length > 1) return;
+  context.subscriptions.push(vscode.commands.registerCommand('agda.restart', async () => {
+    const editor = window.activeTextEditor;
+    if(!editor || !isAgdaDocument(editor.document)) return;
 
-    const sel = e.selection;
+    await editor.document.save();
+    await client.restart();
+  }));
 
-    const goals = await agda.postRequest(rpc.Query.AllGoals, {
-      types: false,
-      uri: e.document.uri.toString()
-    });
-    if (goals.length < 1) return;
+  context.subscriptions.push(vscode.commands.registerCommand('agda.reload', async () => {
+    const editor = window.activeTextEditor;
+    if (!editor || !isAgdaDocument(editor.document)) return;
+    await editor.document.save();
 
-    // Find the first goal whose start is after the current position.
-    let next = goals.find(({ goalRange: { start, end } }) =>
-      isAfter(start, sel.active) && !isAfter(sel.active, end)) ?? goals[0];
-
-    e.revealRange(client.protocol2CodeConverter.asRange(next.goalRange));
-    e.selection = new vscode.Selection(
-      client.protocol2CodeConverter.asPosition(next.goalRange.start),
-      client.protocol2CodeConverter.asPosition(next.goalRange.end),
-    );
-  }), vscode.commands.registerCommand("agda.prevGoal", async () => {
-    const e = window.activeTextEditor;
-    if (!e || !isAgdaDocument(e.document) || e.selections.length > 1) return;
-
-    const sel = e.selection;
-
-    const goals = await agda.postRequest(rpc.Query.AllGoals, {
-      types: false,
-      uri: e.document.uri.toString()
-    });
-    if (goals.length < 1) return;
-
-    // Find the last goal whose end is before the current position.
-    goals.reverse();
-    let prev = goals.find(({ goalRange: { end } }) => isAfter(sel.active, end)) ?? goals[0];
-
-    e.revealRange(client.protocol2CodeConverter.asRange(prev.goalRange));
-    e.selection = new vscode.Selection(
-      client.protocol2CodeConverter.asPosition(prev.goalRange.start),
-      client.protocol2CodeConverter.asPosition(prev.goalRange.end),
-    );
+    await client.sendRequest(lsp.ExecuteCommandRequest.type, {
+      command: 'reload',
+      arguments: [client.code2ProtocolConverter.asUri(editor.document.uri)]
+    })
   }));
 
   // Start the client. This will also launch the server
