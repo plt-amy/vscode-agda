@@ -19,6 +19,8 @@ import { AgdaGoals, AgdaHighlightingInit, AgdaInfoviewRefresh, AgdaQuery } from 
 import { isAgdaDocument, agdaSelector } from './utils';
 
 import registerServerStatus from './client/serverStatus';
+import { InputCompletionProvider, InputHoverProvider } from './input/providers';
+import { leader } from './input/data';
 
 class LanguageClientConnection implements rpc.Connection {
   constructor(private readonly client: LanguageClient) { }
@@ -86,6 +88,12 @@ const decorateGoals = ({ goals, uri }: { goals: rpc.Goal[], uri: string }) => {
 };
 
 export async function activate(context: ExtensionContext, createClient: (clientOptions: LanguageClientOptions) => LanguageClient | Promise<LanguageClient>) {
+  // Register our input provider
+  context.subscriptions.push(
+    languages.registerHoverProvider(agdaSelector, new InputHoverProvider()),
+    languages.registerCompletionItemProvider(agdaSelector, new InputCompletionProvider(), leader),
+  );
+
   // Options to control the language client
   const clientOptions: LanguageClientOptions = {
     documentSelector: agdaSelector,
@@ -108,6 +116,7 @@ export async function activate(context: ExtensionContext, createClient: (clientO
     );
   });
 
+  // Register our infoview.
   const infoview = new AgdaInfoviewProvider(context, client);
   context.subscriptions.push(window.registerWebviewViewProvider(AgdaInfoviewProvider.viewType, infoview));
 
