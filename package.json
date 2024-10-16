@@ -378,7 +378,7 @@
         }
       },
       {
-        "key": "ctrl+c ctrl+space",
+        "key": "ctrl+c ctrl+c",
         "command": "editor.action.codeAction",
         "when": "(editorLangId == agda || resourceFilename =~ /\\.lagda\\.md$/) && !editorHasSelection && editorTextFocus",
         "args": {
