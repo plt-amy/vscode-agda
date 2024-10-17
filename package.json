@@ -276,17 +276,17 @@
       {
         "language": "agda",
         "scopes": {
-          "symbol": [
-            "source.agda.symbol"
+          "coinductiveCons": [
+            "constant.other.symbol"
+          ],
+          "interactionPoint": [
+            "constant.other.symbol"
+          ],
+          "postulate": [
+            "entity.name.postulate"
           ],
           "pragma": [
-            "source.agda.pragma"
-          ],
-          "markup": [
-            "source.agda.markup"
-          ],
-          "background": [
-            "source.agda.background"
+            "entity.name.pragma"
           ],
           "primitiveType": [
             "support.type.primitive"
@@ -294,11 +294,8 @@
           "primitive": [
             "entity.name.primitive"
           ],
-          "postulate": [
-            "entity.name.postulate"
-          ],
-          "coinductiveCons": [
-            "constant.other.symbol"
+          "symbol": [
+            "source.agda.symbol"
           ]
         }
       }
@@ -333,6 +330,14 @@
         },
         {
           "command": "agda.prevGoal",
+          "when": "editorLangId == agda || resourceFilename =~ /\\.lagda\\.md$/"
+        },
+        {
+          "command": "agda.restart",
+          "when": "editorLangId == agda || resourceFilename =~ /\\.lagda\\.md$/"
+        },
+        {
+          "command": "agda.reload",
           "when": "editorLangId == agda || resourceFilename =~ /\\.lagda\\.md$/"
         }
       ]
