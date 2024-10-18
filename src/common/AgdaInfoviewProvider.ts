@@ -1,7 +1,8 @@
-import { type CancellationToken, type ExtensionContext, Uri, type WebviewView, type WebviewViewProvider, type WebviewViewResolveContext, window } from "vscode";
+import { type ExtensionContext, Uri, type WebviewView, type WebviewViewProvider, window } from "vscode";
+
 import { BaseLanguageClient as LanguageClient } from "vscode-languageclient";
+import { AgdaInfoviewMessage, AgdaQuery } from "../api/methods";
 import { FromInfoviewMessage, ToInfoviewMessage } from "../api/rpc";
-import { AgdaInfoviewMessage } from "../api/methods";
 import { assertNever } from './utils';
 
 export class AgdaInfoviewProvider implements WebviewViewProvider {
@@ -12,8 +13,7 @@ export class AgdaInfoviewProvider implements WebviewViewProvider {
   constructor(private readonly context: ExtensionContext, private readonly client: LanguageClient) {
   }
 
-  resolveWebviewView(webviewView: WebviewView, context: WebviewViewResolveContext<unknown>, token: CancellationToken): void | Thenable<void> {
-    console.log(webviewView, context, token);
+  resolveWebviewView(webviewView: WebviewView): void | Thenable<void> {
     this.view = webviewView;
     webviewView.show();
 
@@ -37,7 +37,7 @@ export class AgdaInfoviewProvider implements WebviewViewProvider {
 
     this.context.subscriptions.push(
       webviewView.webview.onDidReceiveMessage(msg => this.handleMessage(msg as FromInfoviewMessage), undefined, []),
-      this.client.onNotification(AgdaInfoviewMessage, m => this.displayMessage(m.uri, m.message))
+      this.client.onNotification(AgdaInfoviewMessage, m => this.displayMessage(this.client.protocol2CodeConverter.asUri(m.uri), m.message)),
     );
   }
 
@@ -45,15 +45,15 @@ export class AgdaInfoviewProvider implements WebviewViewProvider {
     void this.view?.webview.postMessage(msg);
   }
 
-  allGoals(uri: string) {
-    this.post({ kind: "Navigate", route: "/goals", uri });
+  allGoals(uri: Uri) {
+    this.post({ kind: "Navigate", route: "/goals", uri: uri.toString() });
   }
 
-  goal(ip: number, uri: string) {
+  goal(ip: number, uri: Uri) {
     this.post({
       kind: "Navigate",
       route: `/goal/${ip}`,
-      uri
+      uri: uri.toString(),
     });
   }
 
@@ -61,9 +61,10 @@ export class AgdaInfoviewProvider implements WebviewViewProvider {
     if (!this.view) return;
 
     if (msg.kind === "RPCRequest") {
-      console.log("Forwarding request", msg);
-      const resp = await this.client.sendRequest("agda/query", msg.params);
-      console.log(resp);
+      const resp = await this.client.sendRequest(AgdaQuery, {
+        ...msg.params,
+        uri: this.client.code2ProtocolConverter.asUri(Uri.parse(msg.params.uri)),
+      });
 
       this.post({
         kind: "RPCReply",
@@ -79,20 +80,19 @@ export class AgdaInfoviewProvider implements WebviewViewProvider {
     }
   }
 
-  public refresh(uri: string) {
-    console.log("Handling webview refresh", uri, this.view);
+  public refresh(uri: Uri) {
     this.post({
       kind: "Refresh",
       route: "/goals",
-      uri
+      uri: uri.toString(),
     });
   }
 
-  public displayMessage(uri: string, msg: string) {
+  public displayMessage(uri: Uri, msg: string) {
     this.post({
       kind: "Navigate",
       route: "/",
-      uri
+      uri: uri.toString(),
     });
     this.post({
       kind: "RunningInfo",

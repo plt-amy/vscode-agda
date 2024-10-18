@@ -1,5 +1,7 @@
 import type * as lsp from "vscode-languageclient";
 
+export type Uri = string;
+
 export type Fragment = { style: string[], children: Fragment[] } | string
 export type Doc = Fragment[]
 
@@ -48,28 +50,38 @@ export type Rewrite = "AsIs" | "Instantiated" | "HeadNormal" | "Simplified" | "N
 
 export class Query<P, R> {
   readonly _: [P, R] | undefined;
-  private constructor(public readonly kind: string) { }
+  private constructor(public readonly kind: keyof Queries) { }
 
   public static GoalAt: Query<{ position: lsp.Position }, number | null> = new Query("GoalAt");
   public static AllGoals: Query<{ types: boolean }, Goal[]> = new Query("AllGoals");
   public static GoalInfo: Query<{ goal: number }, GoalInfo> = new Query("GoalInfo");
-  public static ModuleName: Query<unknown, Doc | null> = new Query("ModuleName");
+  public static ModuleName: Query<object, Doc | null> = new Query("ModuleName");
+}
+
+type Queries = {
+  GoalAt: typeof Query.GoalAt,
+  AllGoals: typeof Query.AllGoals,
+  GoalInfo: typeof Query.GoalInfo,
+  ModuleName: typeof Query.ModuleName,
+}
+
+type QueryParameter = {
+  [K in keyof Queries]: Queries[K] extends Query<infer P, infer _> ? P & { kind: K, uri: Uri } : never;
 }
 
 
-export interface Connection {
-  postRequest<P, R>(query: Query<P, R>, params: P & { uri: string }): Promise<R>;
+export interface Connection<Uri> {
+  postRequest<P, R>(query: Query<P, R>, params: P & { uri: Uri }): Promise<R>;
 }
-
 
 type FromInfoviewMessages = {
   RPCRequest: {
     serial: number,
-    params: unknown,
+    params: QueryParameter[keyof Queries],
   },
 
   GoToGoal: {
-    uri: string,
+    uri: Uri,
     range: lsp.Range,
   },
 }
@@ -86,12 +98,12 @@ type ToInfoviewMessages = {
   /** Navigate to a page on the infoview. */
   Navigate: {
     route: string,
-    uri: string,
+    uri: Uri,
   },
   /** Navigate or refresh a page on the infoview. */
   Refresh: {
     route: string,
-    uri: string,
+    uri: Uri,
   },
   /** Print a message to the infoview. */
   RunningInfo: {

@@ -1,9 +1,9 @@
 import { ProtocolNotificationType, ProtocolRequestType, SemanticTokensLegend } from "vscode-languageclient";
-import { Goal } from "./rpc";
+import { Goal, Uri } from "./rpc";
 
 export type AgdaInfoviewMessageParams = {
   /** The URI of the document that this message came from. */
-  uri: string,
+  uri: Uri,
   /** The message to display. */
   message: string,
 };
@@ -11,7 +11,7 @@ export type AgdaInfoviewMessageParams = {
 /** Display a message in the infoview. */
 export const AgdaInfoviewMessage: ProtocolNotificationType<AgdaInfoviewMessageParams, void> = new ProtocolNotificationType("agda/infoview/message");
 
-export type AgdaInfoviewRefreshParams = string;
+export type AgdaInfoviewRefreshParams = Uri;
 
 /** Update the infoview display */
 export const AgdaInfoviewRefresh: ProtocolNotificationType<AgdaInfoviewRefreshParams, void> = new ProtocolNotificationType("agda/infoview/refresh");
@@ -19,7 +19,7 @@ export const AgdaInfoviewRefresh: ProtocolNotificationType<AgdaInfoviewRefreshPa
 /** Query the Agda state.  */
 export const AgdaQuery: ProtocolRequestType<unknown, unknown, void, void, void> = new ProtocolRequestType("agda/query");
 
-export type AgdaGoalsParams = { goals: Goal[], uri: string };
+export type AgdaGoalsParams = { goals: Goal[], uri: Uri };
 
 /** Update the goals in the infoview. */
 export const AgdaGoals: ProtocolNotificationType<AgdaGoalsParams, void> = new ProtocolNotificationType("agda/goals");

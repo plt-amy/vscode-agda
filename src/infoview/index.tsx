@@ -24,14 +24,12 @@ class OpenDocument {
 
 const DocumentContext: React.Context<OpenDocument> = React.createContext(OpenDocument.empty);
 
-class MessageConnection implements rpc.Connection {
+class MessageConnection implements rpc.Connection<string> {
   private readonly pending: Map<number, (data: unknown) => void> = new Map();
   private next: number = 0;
 
   constructor() {
     window.addEventListener("message", ev => {
-      console.log("XXX", ev);
-
       const msg = ev.data as rpc.ToInfoviewMessage;
       if (msg.kind === "RPCReply" && this.pending.get(msg.serial)) {
         this.pending.get(msg.serial)?.(msg.data);
@@ -42,15 +40,13 @@ class MessageConnection implements rpc.Connection {
 
   postRequest<P, R>(query: rpc.Query<P, R>, params: P & { uri: string }): Promise<R> {
     return new Promise((resolve, _reject) => {
-      console.log("posting");
-
       const id = this.next++;
       this.pending.set(id, resolve as (data: unknown) => void);
 
       postMessage({
         kind: "RPCRequest",
         serial: id,
-        params: { ...params, kind: query.kind },
+        params: { ...params, kind: query.kind } as any,
       });
     });
   }
@@ -59,7 +55,6 @@ class MessageConnection implements rpc.Connection {
 function useQuery<P, R>(query: rpc.Query<P, R>, param: P, deps: React.DependencyList = []) {
   const [out, setOut] = React.useState<R>();
   const doc = React.useContext(DocumentContext);
-  console.log("XXX", doc);
 
   React.useEffect(() => {
     if (!doc.uri || doc.uri === "about:blank") return;
@@ -236,7 +231,6 @@ const Goal = () => {
   if (typeof id !== "number") return;
 
   const goal = useQuery(rpc.Query.GoalInfo, { goal: id }, [id]);
-  console.log("YYY", goal);
   const context = goal?.goalContext ?? [];
   const constraints = goal?.goalConstraints ?? [];
 

@@ -11,10 +11,7 @@ export function activate(context: ExtensionContext) {
 
     const args: string[] = ["--lsp", ...opts];
 
-    const serverOptions: Executable = {
-      command, args,
-      transport: TransportKind.stdio,
-    };
+    const serverOptions: Executable = { command, args, transport: TransportKind.stdio };
 
     // Create the language client and start the client.
     return new LanguageClient("agda", "Agda Language Server", serverOptions, clientOptions);
