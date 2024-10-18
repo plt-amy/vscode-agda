@@ -3,7 +3,6 @@ import {
   ExtensionContext, SemanticTokens, TextDocument, languages, window
 } from "vscode";
 import * as vscode from "vscode";
-import { SemanticTokensFeature } from "vscode-languageclient/lib/common/semanticTokens";
 
 import {
   LanguageClientOptions,
@@ -166,7 +165,9 @@ export async function activate(context: ExtensionContext, createClient: (clientO
 
   registerServerStatus(context, client);
 
-  SemanticTokensFeature.prototype.register = function () { };
+  // HACK: Disable the semantic tokens feature
+  Object.getPrototypeOf(client.getFeature("textDocument/semanticTokens")).register = function () { };
+
   client.onNotification(AgdaHighlightingInit, ({ legend }) => {
     const decoded = client.protocol2CodeConverter.asSemanticTokensLegend(legend);
     context.subscriptions.push(
@@ -236,7 +237,7 @@ export async function activate(context: ExtensionContext, createClient: (clientO
     if (!editor || !isAgdaDocument(editor.document)) return;
 
     await editor.document.save();
-    await client.restart();
+    await client.restart?.(); // FIXME: Make this required.
   }));
 
   context.subscriptions.push(vscode.commands.registerCommand('agda.reload', async () => {

@@ -5,5 +5,5 @@ import { BaseLanguageClient } from 'vscode-languageclient';
  * both implementations.
  */
 export interface AbstractLanguageClient extends BaseLanguageClient {
-  restart(): void;
+  restart?(): void;
 }

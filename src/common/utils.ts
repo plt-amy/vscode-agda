@@ -8,10 +8,10 @@ export const assertNever = (x: never): never => { throw new Error(`Impossible ca
  * The text documents that the Agda extension will run on.
  */
 export const agdaSelector: lsp.DocumentSelector & vscode.DocumentSelector = [
-  { scheme: "file", language: "agda" },
+  { language: "agda" },
   // By matching lagda.md files, rather than defining a new language, we allow
   // other Markdown extensions to work with literate files.
-  { scheme: "file", pattern: "**/*.lagda.md" }
+  { pattern: "**/*.lagda.md" }
 ];
 
 /** Determine if this document is an Agda file. */

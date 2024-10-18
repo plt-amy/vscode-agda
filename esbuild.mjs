@@ -42,6 +42,7 @@ const sharedDesktopOptions = {
 
 /** @type BuildOptions[] */
 const files = [
+  // Infoview
   {
     entryPoints: ['src/infoview/index.tsx'],
     outfile: 'out/infoview/index.js',
@@ -54,11 +55,26 @@ const files = [
     ...sharedWebOptions,
   },
 
+  // Desktop
   {
     entryPoints: ['src/desktop/extension.ts'],
     outfile: 'out/desktop/extension.js',
     format: 'cjs',
     ...sharedDesktopOptions,
+  },
+
+  // Web
+  {
+    entryPoints: ['src/web/extension.ts'],
+    outfile: 'out/web/extension.js',
+    format: 'cjs',
+    ...sharedWebOptions,
+  },
+  {
+    entryPoints: ['src/web/wasm/browserWorker.ts'],
+    outfile: 'out/web/mainWorker.js',
+    format: 'iife',
+    ...sharedWebOptions,
   },
 ]
 

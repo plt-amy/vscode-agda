@@ -38,6 +38,11 @@ const updateStatus = (client: BaseLanguageClient, serverStatus: vscode.LanguageS
       serverStatus.text = !info ? "Running" : (info.version ? `${info.name} ${info.version}` : info.name);
       serverStatus.severity = vscode.LanguageStatusSeverity.Information;
       break;
+    case ClientState.StartFailed:
+      serverStatus.busy = false;
+      serverStatus.text = "Failed";
+      serverStatus.severity = vscode.LanguageStatusSeverity.Error;
+      break;
     default:
       assertNever(client.state);
   }

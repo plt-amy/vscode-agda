@@ -9,5 +9,6 @@
     { "path": "src/common/tsconfig.json" },
     { "path": "src/desktop/tsconfig.json" },
     { "path": "src/infoview/tsconfig.json" },
+    { "path": "src/web/tsconfig.json" },
   ]
 }

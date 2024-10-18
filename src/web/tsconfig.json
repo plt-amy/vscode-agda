@@ -1,0 +1,12 @@
+{
+  "extends": ["../tsconfig.base.json"],
+  "compilerOptions": {
+    "types": ["vscode"],
+    "lib": ["webworker","es2020"],
+    "outDir": "../../out/ts/desktop",
+  },
+  "include": ["./"],
+  "references": [
+    {"path": "../common/tsconfig.json"},
+  ],
+}
