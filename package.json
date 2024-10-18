@@ -393,6 +393,11 @@
         "args": {
           "kind": "agda.case"
         }
+      },
+      {
+        "key": "ctrl+c ctrl+l",
+        "command": "agda.reload",
+        "when": "(editorLangId == agda || resourceFilename =~ /\\.lagda\\.md$/) && !editorHasSelection && editorTextFocus"
       }
     ]
   },
